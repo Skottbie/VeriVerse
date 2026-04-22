@@ -15,7 +15,7 @@ For this submission scope, VeriVerse is positioned as the first full-lifecycle A
 | Item | Value |
 |---|---|
 | Track | Autonomous Workflows / AI Creator Tools |
-| Repository | https://github.com/Skottbie/VeriVerse-BSC |
+| Repository | https://github.com/Skottbie/VeriVerse |
 | Chain | BNB Chain testnet (chain 97) / mainnet (chain 56) |
 | Product type | Full-stack Agentic application |
 
