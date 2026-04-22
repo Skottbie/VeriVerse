@@ -1,0 +1,80 @@
+# Environment variables (CRITICAL - contains private keys and RPC URLs)
+.env
+.env.*
+*.env
+
+# Dependencies and build outputs
+node_modules/
+artifacts/
+cache/
+**/__pycache__/
+**/*.pyc
+**/.cache/
+__pycache__/
+*.pyc
+*.pyo
+skills/**/__pycache__/
+skills/**/.cache/
+
+# Local tool state
+.cache/
+.openclaw/
+.tmp_*/
+.tmp_*.mjs
+dashboard/index_backup.html
+dashboard/index_backup2.html
+
+# Git backup directory (old nested repo backup)
+.git.nested-backup/
+
+# Unknown temp files
+utputFormat
+
+# Debug / diagnostic scripts (not for public repo)
+_check_agent_state.py
+_check_agent_state2.py
+_check_tx.py
+_fix_openclaw_path.py
+
+# PCEG local cache (generated from preseed.py, not for public repo)
+PCEG/edge_cache.json
+
+# Internal-only docs (default not public)
+AGENTS.md
+HEARTBEAT.md
+IDENTITY.md
+SOUL.md
+USER.md
+TOOLS.md
+memory/
+openclaw.json
+
+# Internal planning docs (not public)
+PRD.md
+design.md
+Diamond档位方案.md
+INFO4P2.MD
+S2.MD
+TWEET4S2_VERIVERSE.md
+DAO_REVIEWER_ZKTLS_RECOMMENDED_DESIGN.md
+Semaphore_Authorization_Design_P4.md
+tmp_p3_p4_dual_audit_2026-04-11.md
+P3_Challenge_Acceptance_Report_ZH_EN_2026-04-11.md
+MIGRATION_MAPPING.md
+addresses.backup.atomic-20260413.json
+
+# Internal evidence archive (not public)
+tmp_archive/
+docs/private/
+data/semaphore-identities/
+data/audit/
+data/agents/*
+!data/agents/schema.json
+tmp/*
+!tmp/closure_mermaid_pack_2026-04-15.md
+
+# Public docs (keep)
+!README.md
+!addresses.json
+!docs/public/
+!docs/public/**

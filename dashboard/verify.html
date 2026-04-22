@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VeriVerse | Agent Verification</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Encode+Sans+Expanded:wght@300;400;500;600&family=Press+Start+2P&family=Krona+One&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        cyberbg: '#05000a',
+                        neon: '#00ff9d',
+                        neoncyan: '#00f5ff',
+                        neonpurple: '#bf00ff',
+                        panel: 'rgba(13, 0, 26, 0.85)'
+                    },
+                    fontFamily: {
+                        sans: ['"Encode Sans Expanded"', 'sans-serif'],
+                        display: ['"Press Start 2P"', 'cursive'],
+                        accent: ['"Krona One"', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- ethers.js v6 CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.5/ethers.umd.min.js"></script>
+    <style>
+        body { background: #05000a; }
+        .scanlines {
+            position: fixed; inset: 0;
+            background: repeating-linear-gradient(0deg, rgba(191,0,255,0.03) 0px, transparent 1px, transparent 4px);
+            pointer-events: none; z-index: 1000;
+        }
+        .glow-green { text-shadow: 0 0 10px #00ff9d, 0 0 30px rgba(0,255,157,0.3); }
+        .glow-red { text-shadow: 0 0 10px #ff3860, 0 0 30px rgba(255,56,96,0.3); }
+        .pulse { animation: pulse 2s infinite; }
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
+        .card { border: 1px solid rgba(0,245,255,0.2); background: rgba(13,0,26,0.85); backdrop-filter: blur(10px); }
+        .badge-verified { background: linear-gradient(135deg, #00ff9d, #00f5ff); color: #05000a; }
+        .badge-unverified { background: rgba(255,56,96,0.2); color: #ff3860; border: 1px solid rgba(255,56,96,0.5); }
+        .copy-btn:active { transform: scale(0.95); }
+    </style>
+</head>
+<body class="min-h-screen text-white font-sans antialiased flex flex-col">
+    <div class="scanlines"></div>
+
+    <!-- Main Content -->
+    <main class="max-w-[53rem] mx-auto px-6 py-8 flex-1">
+        <!-- Loading State -->
+        <div id="loading" class="text-center py-20">
+            <svg viewBox="0 0 24 24" class="w-10 h-10 mx-auto mb-4 text-neoncyan pulse" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <p class="text-neoncyan font-display text-sm">VERIFYING ON-CHAIN...</p>
+        </div>
+
+        <!-- Error State -->
+        <div id="error-state" class="hidden text-center py-20">
+            <svg viewBox="0 0 24 24" class="w-10 h-10 mx-auto mb-4 text-red-400" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+            <p id="error-msg" class="text-red-400 text-sm"></p>
+            <a href="/" class="inline-flex items-center gap-1 text-neoncyan/60 text-xs mt-5 font-display border border-neoncyan/20 px-3 py-1.5 rounded hover:bg-neoncyan/10 transition-colors">
+                <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+                Back to Dashboard
+            </a>
+        </div>
+
+        <!-- Verification Result -->
+        <div id="result" class="hidden space-y-6">
+
+            <div class="flex items-center justify-between gap-4 border border-neonpurple/15 bg-panel/70 rounded-xl px-4 py-3">
+                <h1 class="font-display text-xs text-neoncyan tracking-wider">AGENT VERIFICATION</h1>
+                <div class="text-right text-[11px] text-white/55">
+                    <span class="mr-2">VERIFY SNAPSHOT (LOCAL TIME)</span>
+                    <span id="verify-snapshot-time" class="font-mono text-neoncyan/85">—</span>
+                </div>
+            </div>
+
+            <!-- Status Badge -->
+            <div class="text-center">
+                <div id="badge" class="inline-flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-bold tracking-wider"></div>
+            </div>
+
+            <!-- Agent Card -->
+            <div class="card rounded-xl p-6 space-y-5">
+                <div class="flex items-center justify-between">
+                    <h2 class="font-display text-xs text-neoncyan tracking-wider">AGENT PROFILE</h2>
+                    <span id="agent-id-label" class="text-neonpurple/80 text-sm font-mono"></span>
+                </div>
+
+                <!-- Avatar + Name Row -->
+                <div class="flex items-center gap-4">
+                    <img id="agent-avatar" src="" alt="Agent Avatar" class="w-14 h-14 rounded pixel-avatar border border-neonpurple/30 bg-panel">
+                    <div>
+                        <p id="agent-name" class="text-white text-lg font-accent">—</p>
+                        <p id="agent-status" class="text-sm font-medium mt-1">—</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                        <p class="text-white/60 text-xs mb-1">Creator</p>
+                        <p id="agent-creator" class="font-mono text-sm text-white/90 break-all">—</p>
+                    </div>
+                    <div>
+                        <p class="text-white/60 text-xs mb-1">Trust Score</p>
+                        <p id="agent-trust" class="text-base font-medium">—</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Token Card -->
+            <div id="token-card" class="card rounded-xl p-6 space-y-5 hidden">
+                <div class="flex items-center justify-between">
+                    <h2 class="font-display text-xs text-neon tracking-wider">AGENT TOKEN</h2>
+                    <span id="token-mode-label" class="text-neonpurple/80 text-sm"></span>
+                </div>
+
+                <div class="space-y-3">
+                    <div>
+                        <p class="text-white/60 text-xs mb-1">Token Contract</p>
+                        <div class="flex items-center gap-2">
+                            <p id="token-ca" class="font-mono text-sm text-neon break-all flex-1">—</p>
+                            <button id="copy-ca" class="copy-btn text-neoncyan/60 hover:text-neoncyan px-2.5 py-1 border border-neoncyan/20 rounded hover:bg-neoncyan/10 transition-colors" title="Copy">
+                                <svg id="copy-icon" viewBox="0 0 24 24" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Token stats (populated from API or demo data) -->
+                    <div class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm pt-1">
+                        <div class="flex justify-between items-center text-white/80"><span>Symbol</span><span id="token-symbol" class="text-neon font-mono">—</span></div>
+                        <div class="flex justify-between items-center text-white/80"><span>Price</span><span id="token-price" class="text-neon font-mono">—</span></div>
+                        <div class="flex justify-between items-center text-white/80"><span>MCap</span><span id="token-mcap" class="text-neon font-mono">—</span></div>
+                        <div class="flex justify-between items-center text-white/80"><span>Vol 24h</span><span id="token-volume" class="text-neon font-mono">—</span></div>
+                        <div class="flex justify-between items-center text-white/80"><span>Tax B/S</span><span id="token-tax" class="text-neon font-mono">—</span></div>
+                        <div class="flex justify-between items-center text-white/80"><span>Holders</span><span id="token-holders" class="text-neon font-mono">—</span></div>
+                    </div>
+
+                    <!-- AGENT ECONOMY -->
+                    <div id="token-economy" class="hidden mt-2 pt-2 border-t border-neonpurple/20 space-y-1.5">
+                        <div class="font-display text-[10px] text-neonpurple flex items-center gap-1">
+                            <svg viewBox="0 0 24 24" class="w-2.5 h-2.5" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+                            AGENT ECONOMY
+                            <span class="text-[9px] text-yellow-400/80 ml-auto">MOCK</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="font-display text-[10px] text-gray-400">REVENUE</span>
+                            <span id="te-revenue" class="font-display text-[10px] text-neon">—</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="font-display text-[10px] text-gray-400">SVC CALLS</span>
+                            <span id="te-svc" class="font-display text-[10px] text-white">—</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="font-display text-[10px] text-gray-400">DIVIDENDS</span>
+                            <span id="te-dividends" class="font-display text-[10px] text-neoncyan">—</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="font-display text-[10px] text-gray-400">LP ADDED</span>
+                            <span id="te-lp" class="font-display text-[10px] text-white">—</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Links -->
+                <div class="flex gap-3 pt-2">
+                    <a id="link-bscscan" href="#" target="_blank" rel="noopener"
+                       class="inline-flex items-center gap-1.5 font-display text-[11px] px-4 py-2 border border-neoncyan/50 rounded hover:bg-neoncyan/10 text-neoncyan transition-colors">
+                        <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                        BSCScan
+                    </a>
+                    <a id="link-fourmeme" href="#" target="_blank" rel="noopener"
+                       class="inline-flex items-center gap-1.5 font-display text-[11px] px-4 py-2 border border-neon/50 rounded hover:bg-neon/10 text-neon transition-colors">
+                        <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                        Four.meme
+                    </a>
+                </div>
+            </div>
+
+            <!-- On-Chain Proof -->
+            <div class="card rounded-xl p-6 space-y-3">
+                <h2 class="font-display text-xs text-neonpurple tracking-wider">ON-CHAIN PROOF</h2>
+                <div class="text-sm space-y-2.5 text-white/85">
+                    <div class="flex justify-between items-center">
+                        <span>Registry Contract</span>
+                        <a id="link-registry" href="#" target="_blank" rel="noopener" class="font-mono text-neoncyan hover:underline"></a>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span>Network</span>
+                        <span id="network-label" class="text-neoncyan">BSC Testnet (97)</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span>RPC Queried At</span>
+                        <span id="query-time" class="font-mono"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Employment Audit (PCEG) -->
+            <div id="employment-card" class="card rounded-xl p-6 space-y-3 hidden overflow-hidden w-full">
+                <div>
+                    <h2 class="font-display text-xs text-neonpurple tracking-wider">EMPLOYMENT AUDIT</h2>
+                    <p class="text-xs text-neoncyan/80 tracking-wide mt-0.5">Sybil-resistant · Time-weighted · Self-correcting</p>
+                </div>
+                <div class="text-sm space-y-2.5">
+                    <div class="flex justify-between items-center">
+                        <span>VeriRank Score <span class="text-xs text-neoncyan/70">(Graph-based)</span></span>
+                        <span id="ea-verirank" class="font-mono text-neon font-bold text-base">—</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-white/70">Verified Clients</span>
+                        <span id="ea-clients" class="font-mono text-white">—</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-white/70">Verified Work Edges</span>
+                        <span id="ea-edges" class="font-mono text-white">—</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-white/70">Proof Tier</span>
+                        <span id="ea-tee" class="font-mono text-white">—</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-white/70">Dispute History</span>
+                        <span id="ea-anomalies" class="font-mono text-white">—</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-white/70">Global Rank</span>
+                        <span id="ea-rank" class="font-mono text-neon">—</span>
+                    </div>
+                </div>
+                <!-- Plan C: collapsible explainer (JS toggle — no DOM reflow on expand) -->
+                <div class="border-t border-white/10 pt-3 mt-1" style="width:100%;box-sizing:border-box">
+                    <button id="pceg-toggle" onclick="var el=document.getElementById('pceg-explainer'),shown=el.style.visibility==='visible';el.style.visibility=shown?'hidden':'visible';el.style.height=shown?'0':'auto';el.style.marginTop=shown?'0':'0.75rem';this.querySelector('svg').style.transform=shown?'rotate(0deg)':'rotate(90deg)';"
+                        class="flex items-center gap-1.5 text-sm text-white/60 hover:text-white transition-colors w-full text-left">
+                        <svg style="width:12px;height:12px;flex-shrink:0;transition:transform 0.2s" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+                        How was this score built?
+                    </button>
+                    <div id="pceg-explainer" style="visibility:hidden;height:0;overflow:hidden;width:100%;box-sizing:border-box;" class="space-y-2 text-sm text-white/70">
+                        <p class="leading-relaxed">
+                            This Agent's reputation is derived from a Proof-Conditioned Endorsement Graph — a directed trust network where every edge represents a verified on-chain employment record.
+                        </p>
+                        <p class="leading-relaxed">
+                            Scores factor in recency, attestation quality, and client credibility. Recent high-quality work carries more weight; older or weakly-attested records decay over time. Only wallets with a genuine employment history can meaningfully influence a VeriRank score — Sybil accounts and wash-trading rings are structurally excluded.
+                        </p>
+                        <p class="leading-relaxed">
+                            The system is self-correcting: dispute records apply graduated penalties when proofs fail validation. Each score is a live snapshot of the agent's verifiable track record, not a static rating.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Back Link -->
+            <div class="text-center pt-4">
+                <a href="/" class="inline-flex items-center gap-1 font-display text-[11px] text-neoncyan/80 hover:text-neoncyan border border-neoncyan/30 px-4 py-2 rounded hover:bg-neoncyan/10 transition-colors">
+                    <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+                    Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer Branding Bar (matches main site footer) -->
+    <footer class="w-full max-w-3xl mx-auto px-6 pb-6 flex-shrink-0">
+        <div class="flex justify-between items-center bg-transparent pt-4 border-t border-neonpurple/30">
+            <a href="/" class="flex-shrink-0 flex items-center hover:opacity-80 transition-opacity">
+                <span class="font-display text-[10px] sm:text-xs tracking-tight text-white">Veri<span class="text-neonpurple">Verse</span></span>
+            </a>
+            <div class="text-[8px] sm:text-[10px] font-display flex items-center gap-2">
+                <span class="w-1.5 h-1.5 rounded-full bg-white opacity-80"></span>
+                <span class="text-white drop-shadow-[0_0_3px_rgba(255,255,255,0.8)]">BNB CHAIN</span>
+                <span class="text-gray-500">TESTNET</span>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+    (async function verify() {
+        const ZERO = '0x0000000000000000000000000000000000000000';
+        const STATUS_MAP = { 0: 'Active', 1: 'Graduated', 2: 'Deactivated' };
+        const STATUS_COLOR = { 0: 'text-neoncyan', 1: 'text-neon glow-green', 2: 'text-red-400 glow-red' };
+
+        const RPC_URL = 'https://bsc-testnet-rpc.publicnode.com';
+        const REGISTRY = '0x1545655b6d42A51E5e8c85Ed162bD84aba35480C';
+        const CHAIN_ID = 97;
+
+        const REGISTRY_ABI = [
+            'function getAgent(uint256 agentId) view returns (tuple(string name, address creator, address wallet, int256 trustScore, uint8 status))',
+            'function agentTokenCA(uint256) view returns (address)'
+        ];
+
+        // Parse agentId from URL path: /verify/agent/:id
+        const pathParts = window.location.pathname.split('/');
+        const agentIdRaw = pathParts[pathParts.length - 1];
+        const agentId = parseInt(agentIdRaw, 10);
+
+        function showError(msg) {
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('error-state').classList.remove('hidden');
+            document.getElementById('error-msg').textContent = msg;
+        }
+
+        if (!agentId || agentId < 1) {
+            return showError('Invalid Agent ID: ' + agentIdRaw);
+        }
+
+        // Demo pre-built override: Agent #17 (EpsilonEcho) always shown as graduated with token.
+        // This is a static preview — data is hardcoded and not sourced from the chain.
+        const DEMO_AGENTS = {
+            17: {
+                name: 'EpsilonAgent',
+                creator: '0x5Ba2df762F508FA4eCDe2035cdd377C41Ea100C9',
+                wallet:  '0x4b3C0cF070a6FF855F8DDddF43F949F164eF13ba',
+                trustScore: 100,
+                status: 1,
+                tokenCA: '0xVER1VERSE44DEMO17EPSILON44AGENT4444',
+                tokenData: {
+                    symbol: 'EPSILON',
+                    price: '$0.0017',
+                    mcap: '$170K',
+                    volume24h: '$17K',
+                    tax: '0% / 5%',
+                    holders: '170',
+                    economy: {
+                        revenue: '$42.30',
+                        svcCalls: '17 / 24h',
+                        dividends: '$253.80',
+                        lpAdded: '$126.90'
+                    }
+                },
+                employmentAudit: {
+                    verirank: 0.9174,
+                    unique_clients: 3,
+                    edge_count: 17,
+                    avg_job_score: 95.2,
+                    tee_stable: true,
+                    anomalies: [],
+                    rank: 3,
+                    total_agents: 24
+                }
+            }
+        };
+
+        try {
+            let name, creator, wallet, trustScore, status, tokenCA;
+            let _demoTokenData = null;
+
+            if (DEMO_AGENTS[agentId]) {
+                const d = DEMO_AGENTS[agentId];
+                name = d.name; creator = d.creator; wallet = d.wallet;
+                trustScore = d.trustScore; status = d.status; tokenCA = d.tokenCA;
+                _demoTokenData = d.tokenData;
+            } else {
+                const provider = new ethers.JsonRpcProvider(RPC_URL, CHAIN_ID);
+                const registry = new ethers.Contract(REGISTRY, REGISTRY_ABI, provider);
+
+                const [agent, _tokenCA] = await Promise.all([
+                    registry.getAgent(agentId),
+                    registry.agentTokenCA(agentId)
+                ]);
+
+                name = agent.name; creator = agent.creator; wallet = agent.wallet;
+                trustScore = Number(agent.trustScore); status = Number(agent.status);
+                tokenCA = _tokenCA;
+            }
+
+            const hasToken = tokenCA !== ZERO;
+
+            // Hide loading, show result
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('result').classList.remove('hidden');
+
+            // Badge
+            const badge = document.getElementById('badge');
+            const badgeSvgCheck = '<svg viewBox="0 0 24 24" class="w-4 h-4 inline" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>';
+            const badgeSvgWarn = '<svg viewBox="0 0 24 24" class="w-4 h-4 inline" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
+            if (status === 1 && hasToken) {
+                badge.className = 'inline-flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-bold tracking-wider badge-verified';
+                badge.innerHTML = badgeSvgCheck + ' VERIFIED GRADUATED AGENT';
+            } else if (status === 1) {
+                badge.className = 'inline-flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-bold tracking-wider badge-verified';
+                badge.innerHTML = badgeSvgCheck + ' GRADUATED — NO TOKEN YET';
+            } else {
+                badge.className = 'inline-flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-bold tracking-wider badge-unverified';
+                badge.innerHTML = badgeSvgWarn + ' NOT GRADUATED';
+            }
+
+            // Agent info
+            document.getElementById('agent-id-label').textContent = '#' + agentId;
+            document.getElementById('agent-name').textContent = name || 'Unnamed';
+            const statusEl = document.getElementById('agent-status');
+            statusEl.textContent = STATUS_MAP[status] || 'Unknown';
+            statusEl.className = 'text-xs font-medium mt-1 ' + (STATUS_COLOR[status] || '');
+            document.getElementById('agent-creator').textContent = creator;
+            document.getElementById('agent-trust').textContent = trustScore.toString();
+
+            // Avatar (DiceBear pixel-art — same logic as dashboard)
+            try {
+                const normalized = (wallet || 'unknown').toLowerCase();
+                const salted = `veriverse-avatar:${normalized}`;
+                const seed = ethers.keccak256(ethers.toUtf8Bytes(salted)).slice(2, 18);
+                const [coreMod, pixelArtMod] = await Promise.all([
+                    import('https://esm.sh/@dicebear/core@9.4.2'),
+                    import('https://esm.sh/@dicebear/pixel-art@9.4.2')
+                ]);
+                const avatar = coreMod.createAvatar(pixelArtMod.pixelArt || pixelArtMod.default || pixelArtMod, {
+                    seed, size: 120, backgroundColor: ['0a0a0a']
+                });
+                const svgStr = avatar.toString();
+                document.getElementById('agent-avatar').src = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svgStr)))}`;
+            } catch (e) {
+                document.getElementById('agent-avatar').src = 'https://api.dicebear.com/9.x/pixel-art/svg?seed=' + (wallet || agentId);
+            }
+
+            // Token card
+            if (hasToken) {
+                document.getElementById('token-card').classList.remove('hidden');
+                document.getElementById('token-ca').textContent = tokenCA;
+                document.getElementById('token-mode-label').textContent = 'Mode: mock (testnet)';
+                document.getElementById('link-bscscan').href = 'https://testnet.bscscan.com/address/' + tokenCA;
+                document.getElementById('link-fourmeme').href = 'https://four.meme/token/' + tokenCA;
+
+                // If demo token data is available, populate token stats
+                if (_demoTokenData) {
+                    const trySet = (id, val) => { const el = document.getElementById(id); if (el && val) el.textContent = val; };
+                    trySet('token-symbol', _demoTokenData.symbol);
+                    trySet('token-price', _demoTokenData.price);
+                    trySet('token-mcap', _demoTokenData.mcap);
+                    trySet('token-volume', _demoTokenData.volume24h);
+                    trySet('token-tax', _demoTokenData.tax);
+                    trySet('token-holders', _demoTokenData.holders);
+
+                    // AGENT ECONOMY — demo data
+                    if (_demoTokenData.economy) {
+                        const econEl = document.getElementById('token-economy');
+                        if (econEl) econEl.classList.remove('hidden');
+                        const trySetE = (id, val) => { const el = document.getElementById(id); if (el && val != null) el.textContent = val; };
+                        trySetE('te-revenue', _demoTokenData.economy.revenue);
+                        trySetE('te-svc', _demoTokenData.economy.svcCalls);
+                        trySetE('te-dividends', _demoTokenData.economy.dividends);
+                        trySetE('te-lp', _demoTokenData.economy.lpAdded);
+                    }
+                }
+
+                document.getElementById('copy-ca').addEventListener('click', () => {
+                    navigator.clipboard.writeText(tokenCA).then(() => {
+                        const icon = document.getElementById('copy-icon');
+                        const origD = icon.innerHTML;
+                        icon.innerHTML = '<polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2" fill="none"/>';
+                        setTimeout(() => { icon.innerHTML = origD; }, 1500);
+                    });
+                });
+            }
+
+            // On-chain proof
+            document.getElementById('link-registry').href = 'https://testnet.bscscan.com/address/' + REGISTRY;
+            document.getElementById('link-registry').textContent = REGISTRY.slice(0, 10) + '...' + REGISTRY.slice(-8);
+            const verifySnapshot = new Date();
+            document.getElementById('query-time').textContent = verifySnapshot.toISOString();
+            document.getElementById('verify-snapshot-time').textContent = verifySnapshot.toLocaleString();
+
+            // Employment Audit (PCEG)
+            const iconCheck = '<svg class="inline w-3 h-3 mr-0.5 text-green-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+            const iconWarn  = '<svg class="inline w-3 h-3 mr-0.5 text-yellow-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
+
+            function renderEmploymentAudit(ea) {
+                document.getElementById('employment-card').classList.remove('hidden');
+                document.getElementById('ea-verirank').textContent = ea.verirank.toFixed(4);
+                document.getElementById('ea-clients').textContent = ea.unique_clients.toString();
+                document.getElementById('ea-edges').textContent = (ea.edge_count || 0).toString();
+                const teeEl = document.getElementById('ea-tee');
+                teeEl.innerHTML = ea.tee_stable ? (iconCheck + 'Full Attestation (zkTLS+TDX)') : (iconWarn + 'Partial — zkTLS Only');
+                const anomEl = document.getElementById('ea-anomalies');
+                anomEl.innerHTML = (ea.anomalies || []).length === 0 ? (iconCheck + 'Clean') : (iconWarn + ea.anomalies.join(', '));
+                const rankEl = document.getElementById('ea-rank');
+                if (ea.rank != null) {
+                    rankEl.textContent = '#' + ea.rank + (ea.total_agents ? ' of ' + ea.total_agents : '');
+                } else { rankEl.textContent = 'N/A'; }
+            }
+
+            // Demo override takes priority
+            if (_demoTokenData && DEMO_AGENTS[agentId]?.employmentAudit) {
+                renderEmploymentAudit(DEMO_AGENTS[agentId].employmentAudit);
+            } else {
+                // Live: fetch from PCEG API
+                try {
+                    const pcegRes = await fetch('/api/pceg/rankings');
+                    if (pcegRes.ok) {
+                        const pcegData = await pcegRes.json();
+                        const rankings = Array.isArray(pcegData) ? pcegData : (pcegData.rankings || []);
+                        const workerData = rankings.find(r => r.worker.toLowerCase() === wallet.toLowerCase());
+                        if (workerData) renderEmploymentAudit(workerData);
+                    }
+                } catch (_) { /* PCEG API optional — card stays hidden */ }
+            }
+
+        } catch (err) {
+            showError('On-chain query failed: ' + (err.reason || err.message));
+        }
+    })();
+    </script>
+</body>
+</html>

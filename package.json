@@ -1,0 +1,37 @@
+{
+  "name": "major-update2--veriverse",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "demo:status": "node scripts/demo_dashboard_closure.js status",
+    "demo:launch": "node scripts/demo_dashboard_closure.js launch",
+    "demo:invest": "node scripts/demo_dashboard_closure.js invest",
+    "demo:challenge": "node scripts/demo_dashboard_closure.js challenge",
+    "demo:graduate": "node scripts/demo_dashboard_closure.js graduate",
+    "demo:all": "node scripts/demo_dashboard_closure.js all",
+    "demo:reset": "node scripts/demo_dashboard_closure.js reset",
+    "demo:link-token": "node scripts/demo_dashboard_closure.js link-token",
+    "demo:server": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^6.1.2",
+    "hardhat": "^2.28.6"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.6.1",
+    "@semaphore-protocol/contracts": "^4.14.2",
+    "@semaphore-protocol/group": "^3.15.2",
+    "@semaphore-protocol/identity": "3.15.2",
+    "@semaphore-protocol/proof": "3.15.2",
+    "dotenv": "^17.4.1",
+    "express": "^5.2.1",
+    "viem": "^2.48.1"
+  }
+}

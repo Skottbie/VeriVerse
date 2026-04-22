@@ -1,0 +1,24 @@
+{
+  "bsc": {
+    "VTRegistry": "0x1545655b6d42A51E5e8c85Ed162bD84aba35480C",
+    "deployer": "0x5Ba2df762F508FA4eCDe2035cdd377C41Ea100C9",
+    "deployedAt": "2026-04-19T09:03:06.632Z",
+    "VeriEscrow": "0xe1aA2Bb933046F52c5A4bBe8224F97851d45180a",
+    "USDT": "0xF8De09e7772366A104c4d42269891AD1ca7Be720",
+    "escrowDeployedAt": "",
+    "VeriSBT": "0x78ec183F99A45dF172DdB3130EE24FCd48955544",
+    "Semaphore": "0xF974dcD3E2D744933aF81C1b94501E311114ac6B",
+    "sbtDeployedAt": "",
+    "note": "Unified with bsc_testnet — old addresses deprecated 2026-04-19"
+  },
+  "bsc_testnet": {
+    "VTRegistry": "0x1545655b6d42A51E5e8c85Ed162bD84aba35480C",
+    "VeriEscrow": "0xe1aA2Bb933046F52c5A4bBe8224F97851d45180a",
+    "VeriSBT": "0x78ec183F99A45dF172DdB3130EE24FCd48955544",
+    "Semaphore": "0xF974dcD3E2D744933aF81C1b94501E311114ac6B",
+    "USDT": "0xF8De09e7772366A104c4d42269891AD1ca7Be720",
+    "deployer": "0x5Ba2df762F508FA4eCDe2035cdd377C41Ea100C9",
+    "deployedAt": "2026-04-19T09:03:06.632Z",
+    "note": "MockUSDT (6 decimals) + MockSemaphore for testnet"
+  }
+}

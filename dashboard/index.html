@@ -1,0 +1,3865 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VeriVerse Arena | Dashboard</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Encode+Sans+Expanded:wght@300;400;500;600&family=Press+Start+2P&family=Krona+One&family=VT323&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        cyberbg: '#05000a',
+                        okx: '#FFFFFF',
+                        neon: '#00ff9d',
+                        neoncyan: '#00f5ff',
+                        neonpurple: '#bf00ff',
+                        panel: 'rgba(13, 0, 26, 0.85)'
+                    },
+                    fontFamily: {
+                        sans: ['"Encode Sans Expanded"', 'sans-serif'],
+                        display: ['"Press Start 2P"', 'cursive'],
+                        terminal: ['"VT323"', 'monospace'],
+                        accent: ['"Krona One"', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <script src="./demo_state.js"></script>
+    <style>
+        .scanlines {
+            position: fixed;
+            inset: 0;
+            background: repeating-linear-gradient(
+                0deg,
+                rgba(191, 0, 255, 0.03) 0px,
+                transparent 1px,
+                transparent 4px
+            );
+            pointer-events: none;
+            z-index: 1000;
+        }
+        .retro-text {
+            text-shadow: 2px 2px 0px rgba(191, 0, 255, 0.5);
+        }
+        /* Flywheel arrow flow animation */
+        @keyframes dashFlow {
+            to { stroke-dashoffset: -16; }
+        }
+        .wv-flow-arrow {
+            animation: dashFlow 0.8s linear infinite;
+        }
+        /* Mobile app like layout container */
+        .main-container {
+            max-w-[480px] w-full mx-auto;
+        }
+
+        /* Hexagon Universe Styles */
+        .hex-outer {
+            clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+            width: 56px;
+            height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            position: relative;
+            margin: 2px;
+            cursor: pointer;
+        }
+        .hex-outer:hover {
+            transform: scale(1.15);
+            z-index: 20;
+        }
+        .hex-inner {
+            clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+            width: 52px;
+            height: 60px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background-color: rgba(5, 0, 10, 0.9);
+        }
+
+        /* ==============================================================
+           5) Graduated Core - Simple Red (Same style as others)
+           ============================================================== */
+
+        .hex-bg-graduated {
+            /* Matches existing bronze/silver/gold flat styles exactly but red */
+            background-color: #ef4444; /* red-500 equivalent */
+            box-shadow: shadow-[0_0_15px_rgba(239,68,68,0.6)];
+        }
+
+        .hex-inner-graduated-liquid {
+            clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+            width: 52px;
+            height: 60px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background-color: rgba(5, 0, 10, 0.9);
+            color: #ef4444; /* red text matching border */
+        }
+
+        .hex-outer-graduated {
+            z-index: 50;
+        }
+
+        .graduation-burst {
+            animation: crown-burst 1.2s cubic-bezier(0.19, 1, 0.22, 1) 1;
+        }
+
+        @keyframes graduated-flow {
+            0% {
+                background-position: 0% 50%;
+            }
+            50% {
+                background-position: 100% 50%;
+            }
+            100% {
+                background-position: 0% 50%;
+            }
+        }
+
+        @keyframes crown-burst {
+            0% {
+                transform: scale(1.05);
+                box-shadow: 0 0 0 rgba(255,255,255,0);
+            }
+            50% {
+                transform: scale(1.16);
+                box-shadow: 0 0 26px rgba(255,255,255,0.75), 0 0 36px rgba(0,245,255,0.45);
+            }
+            100% {
+                transform: scale(1.07);
+                box-shadow: 0 0 0 rgba(255,255,255,0);
+            }
+        }
+
+        /* Make the hex wrap nicely */
+        .hex-grid {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: flex-start;
+            margin-left: 12px;
+        }
+        /* Map Container */
+        .map-container {
+            cursor: grab;
+        }
+        .map-container:active {
+            cursor: grabbing;
+        }
+
+        #map-pane {
+            transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
+            will-change: transform;
+        }
+
+        #agent-card-panel {
+            width: clamp(260px, 33vw, 370px);
+            right: clamp(15%, 21vw, 27%);
+            transform: translate(120%, -50%);
+            opacity: 0;
+            pointer-events: none;
+            transition: transform 360ms cubic-bezier(0.22, 1, 0.36, 1), opacity 280ms ease-out;
+        }
+
+        #arena-shell.focused #map-pane {
+            transform: translateX(-8%) scale(0.94);
+        }
+
+        #arena-shell.focused #agent-card-panel {
+            transform: translate(0, -50%);
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .pixel-avatar {
+            image-rendering: pixelated;
+        }
+
+        @media (max-width: 640px) {
+            #arena-shell.focused #map-pane {
+                transform: translateX(-15%) scale(0.90);
+            }
+
+            #agent-card-panel {
+                width: min(82vw, 325px);
+                right: 15%;
+            }
+        }
+
+        /* Onboarding Pipeline Animation */
+        .ob-node.active {
+            border-color: #bf00ff;
+            box-shadow: 0 0 12px rgba(191, 0, 255, 0.5), 0 0 24px rgba(191, 0, 255, 0.2);
+        }
+        .ob-node.active .ob-icon { color: #bf00ff; }
+        .ob-node.active + .ob-label,
+        .ob-node.active ~ .ob-label { color: #bf00ff; }
+        .ob-node.done {
+            border-color: #00ff9d;
+            background: rgba(0, 255, 157, 0.08);
+        }
+        .ob-node.done .ob-icon { color: #00ff9d; }
+        .ob-node.final {
+            border-color: #00ff9d;
+            box-shadow: 0 0 16px rgba(0, 255, 157, 0.5), 0 0 32px rgba(0, 255, 157, 0.2);
+            background: rgba(0, 255, 157, 0.1);
+        }
+        .ob-node.final .ob-icon { color: #00ff9d; }
+        @keyframes ob-cursor-blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+        .ob-cursor {
+            display: inline-block;
+            width: 6px;
+            height: 10px;
+            background: #00f5ff;
+            margin-left: 2px;
+            animation: ob-cursor-blink 0.7s step-end infinite;
+        }
+        @keyframes earn-icon-blink {
+            0%, 100% { stroke: #f59e0b; filter: drop-shadow(0 0 5px #f59e0b); }
+            50% { stroke: #fcd34d; filter: drop-shadow(0 0 10px #fcd34d) drop-shadow(0 0 20px #f59e0b); }
+        }
+        .earn-active { animation: earn-icon-blink 1.1s ease-in-out infinite; }
+    </style>
+</head>
+<body class="bg-cyberbg text-gray-200 antialiased selection:bg-neonpurple selection:text-black flex flex-col h-screen overflow-hidden items-center justify-between">
+    <div class="scanlines"></div>
+    
+    <main class="h-full w-full px-4 flex flex-col justify-start relative z-10 pt-8 pb-4">
+        <div class="w-full max-w-[480px] mx-auto">
+            <!-- Logo Area - Left Aligned -->
+            <div class="flex items-center mb-6 flex-shrink-0">
+                <img src="./Veri_v2.png" alt="VeriVerse Logo" class="h-16 w-auto object-contain opacity-90 transition-all duration-700" id="main-logo">
+                <div id="badge-wrapper" class="ml-4 transition-opacity duration-500 self-center">
+                    <div class="bg-neonpurple text-black font-display text-[10px] md:text-xs px-2 py-1 font-bold tracking-tighter shadow-[0_0_10px_rgba(191,0,255,0.8)] animate-[pulse_1.5s_ease-in-out_infinite]">$AGENT SILICON VALLEY</div>
+                </div>
+            </div>
+
+            <!-- Left Aligned Title -->
+            <h1 id="main-title" class="flex-shrink-0 text-4xl md:text-5xl leading-[1.2] text-left transition-all duration-700 ease-in-out overflow-hidden max-h-0 opacity-0 origin-top mb-0">
+                <span class="block font-accent tracking-tighter text-white">LAUNCH</span>
+                <span class="block font-accent tracking-tighter text-white">THE</span>
+                <span class="block font-display text-neonpurple text-base md:text-lg mt-5 retro-text leading-loose">$AGENT</span>
+                <span class="block font-display text-neonpurple text-base md:text-lg mt-2 retro-text leading-loose">SILICON VALLEY</span>
+            </h1>
+
+            <!-- Terminal Style SYS_LOG -->
+            <div id="sys-log-container" class="mt-4 flex-shrink-0 bg-black/80 font-display text-[8px] md:text-[10px] text-neoncyan p-3 rounded-md border border-neonpurple/50 shadow-[inset_0_0_15px_rgba(191,0,255,0.15)] flex flex-col justify-end gap-1.5 w-full text-left overflow-hidden transition-all duration-700 ease-[cubic-bezier(0.4,0,0.2,1)]" style="max-height: 0; padding-top: 0; padding-bottom: 0; margin-top: 0; opacity: 0; border-width: 0;">
+                <!-- 3 Log lines will be dynamically inserted here -->
+            </div>
+        </div>
+
+        <!-- Hive Arena + Side Card -->
+        <div id="arena-shell" class="flex-1 mt-4 relative w-full min-h-[360px] overflow-hidden border border-neonpurple/20 bg-black/40 rounded-sm shadow-[inset_0_0_20px_rgba(191,0,255,0.05)]">
+            <div id="map-pane" class="absolute inset-0 map-container">
+                <!-- The zoomable/pan-able Honeycomb area -->
+                <div id="hex-map" class="absolute top-1/2 left-1/2 transition-transform duration-75 origin-center w-0 h-0 will-change-transform z-10" style="transform: translate(0px, 0px) scale(1);">
+                    <!-- Hexagons go here via Absolute Positioning -->
+                </div>
+
+                <div class="absolute inset-0 pointer-events-none opacity-20 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-neonpurple/50 via-transparent to-transparent flex justify-center items-center z-0">
+                    <div class="w-[80vw] h-[80vw] max-w-[400px] max-h-[400px] border border-neonpurple/30 rounded-full animate-[ping_4s_ease-out_infinite]"></div>
+                </div>
+            </div>
+
+            <!-- B0: Onboarding Animation (Pipeline + Terminal) -->
+            <div id="onboarding-anim" class="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/90 hidden">
+                <!-- Curve Stream Canvas + Legend -->
+                <div class="w-[95%] max-w-[560px] flex items-stretch gap-2 mb-2">
+                    <canvas id="ob-canvas" width="520" height="150" class="flex-1 rounded-sm border border-gray-800/50" style="image-rendering: pixelated; min-width:0;"></canvas>
+                    <div id="ob-legend" class="flex flex-col justify-center gap-2 min-w-[90px]">
+                        <div id="ob-leg-trust" class="flex items-center gap-2">
+                            <span class="inline-block w-4 h-[3px] rounded-full" style="background:#bf00ff;box-shadow:0 0 6px #bf00ff"></span>
+                            <span class="font-display text-[10px] text-purple-400">TrustScore</span>
+                        </div>
+                        <div id="ob-leg-invest" class="flex items-center gap-2 hidden">
+                            <span class="inline-block w-4 h-[3px] rounded-full" style="background:#00f5ff;box-shadow:0 0 6px #00f5ff"></span>
+                            <span class="font-display text-[10px] text-cyan-400">Investment</span>
+                        </div>
+                        <div id="ob-leg-agent" class="flex items-center gap-2 hidden">
+                            <span class="inline-block w-4 h-[6px] rounded-sm" style="background:#00ff9d;box-shadow:0 0 6px #00ff9d"></span>
+                            <span class="font-display text-[10px] text-green-400">$AGENT</span>
+                        </div>
+                    </div>
+                </div>
+                <!-- Pipeline row -->
+                <div class="flex items-center gap-0 w-[95%] max-w-[640px] mb-3">
+                    <!-- Node 1: LAUNCH -->
+                    <div class="flex flex-col items-center flex-1">
+                        <div id="ob-node-1" class="w-10 h-10 rounded-full border-2 border-gray-700 flex items-center justify-center transition-all duration-500 ob-node">
+                            <svg viewBox="0 0 24 24" class="w-5 h-5 text-gray-600 ob-icon" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                        </div>
+                        <span class="font-display text-[7px] text-gray-600 mt-1.5 ob-label">LAUNCH</span>
+                    </div>
+                    <!-- Line 1→2 -->
+                    <div class="flex-1 h-[2px] bg-gray-800 relative -mt-4 mx-[-4px]"><div id="ob-line-1" class="absolute inset-0 bg-neonpurple scale-x-0 origin-left transition-transform duration-500"></div></div>
+                    <!-- Node 2: PROVE -->
+                    <div class="flex flex-col items-center flex-1">
+                        <div id="ob-node-2" class="w-10 h-10 rounded-full border-2 border-gray-700 flex items-center justify-center transition-all duration-500 ob-node">
+                            <svg viewBox="0 0 24 24" class="w-5 h-5 text-gray-600 ob-icon" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                        </div>
+                        <span class="font-display text-[7px] text-gray-600 mt-1.5 ob-label">PROVE</span>
+                    </div>
+                    <!-- Line 2→3 -->
+                    <div class="flex-1 h-[2px] bg-gray-800 relative -mt-4 mx-[-4px]"><div id="ob-line-2" class="absolute inset-0 bg-neonpurple scale-x-0 origin-left transition-transform duration-500"></div></div>
+                    <!-- Node 3: ATTRACT -->
+                    <div class="flex flex-col items-center flex-1">
+                        <div id="ob-node-3" class="w-10 h-10 rounded-full border-2 border-gray-700 flex items-center justify-center transition-all duration-500 ob-node">
+                            <svg viewBox="0 0 24 24" class="w-5 h-5 text-gray-600 ob-icon" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 12V8H6a2 2 0 01-2-2c0-1.1.9-2 2-2h12v4"/><path d="M4 6v12c0 1.1.9 2 2 2h14v-4"/><path d="M18 12a2 2 0 000 4h4v-4h-4z"/></svg>
+                        </div>
+                        <span class="font-display text-[7px] text-gray-600 mt-1.5 ob-label">ATTRACT</span>
+                    </div>
+                    <!-- Line 3→4 -->
+                    <div class="flex-1 h-[2px] bg-gray-800 relative -mt-4 mx-[-4px]"><div id="ob-line-3" class="absolute inset-0 bg-neonpurple scale-x-0 origin-left transition-transform duration-500"></div></div>
+                    <!-- Node 4: GRADUATE -->
+                    <div class="flex flex-col items-center flex-1">
+                        <div id="ob-node-4" class="w-10 h-10 rounded-full border-2 border-gray-700 flex items-center justify-center transition-all duration-500 ob-node">
+                            <svg viewBox="0 0 24 24" class="w-5 h-5 text-gray-600 ob-icon" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/></svg>
+                        </div>
+                        <span class="font-display text-[7px] text-gray-600 mt-1.5 ob-label">GRADUATE</span>
+                    </div>
+                    <!-- Line 4→5 -->
+                    <div class="flex-1 h-[2px] bg-gray-800 relative -mt-4 mx-[-4px]"><div id="ob-line-4" class="absolute inset-0 bg-neon scale-x-0 origin-left transition-transform duration-500"></div></div>
+                    <!-- Node 5: TOKENIZE -->
+                    <div class="flex flex-col items-center flex-1">
+                        <div id="ob-node-5" class="w-10 h-10 rounded-full border-2 border-gray-700 flex items-center justify-center transition-all duration-500 ob-node">
+                            <svg viewBox="0 0 24 24" class="w-5 h-5 text-gray-600 ob-icon" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+                        </div>
+                        <span class="font-display text-[7px] text-gray-600 mt-1.5 ob-label">TOKENIZE</span>
+                    </div>
+                    <!-- Line 5→6 (amber = beyond VeriVerse, real-world employment) -->
+                    <div class="flex-1 h-[2px] bg-gray-800 relative -mt-4 mx-[-4px]"><div id="ob-line-5" class="absolute inset-0 scale-x-0 origin-left transition-transform duration-500" style="background:#f59e0b"></div></div>
+                    <!-- Node 6: EARN -->
+                    <div class="flex flex-col items-center flex-1">
+                        <div id="ob-node-6" class="w-10 h-10 rounded-full border-2 border-gray-700 flex items-center justify-center transition-all duration-500 ob-node">
+                            <svg id="ob-earn-icon" viewBox="0 0 24 24" class="w-5 h-5 ob-icon" fill="none" stroke="#6b7280" stroke-width="1.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                        </div>
+                        <span class="font-display text-[7px] text-gray-600 mt-1.5 ob-label">EARN</span>
+                    </div>
+                </div>
+                <!-- Terminal area -->
+                <div id="ob-terminal" class="w-[95%] max-w-[520px] bg-black/95 border border-gray-800 rounded-sm p-3 font-terminal text-[22px] text-neoncyan h-[110px] overflow-hidden">
+                    <div id="ob-term-lines" class="flex flex-col gap-0.5"></div>
+                </div>
+                <!-- CTA after animation completes -->
+                <div id="ob-cta" class="mt-2 opacity-0 transition-opacity duration-700 pointer-events-none">
+                    <div class="font-display text-[11px] text-neonpurple/70 animate-pulse tracking-widest cursor-pointer">CLICK TO CONTINUE</div>
+                </div>
+                <!-- Skip button -->
+                <button id="ob-skip" class="absolute bottom-4 right-4 font-display text-[8px] text-gray-600 hover:text-gray-400 transition-colors tracking-widest">SKIP →</button>
+            </div>
+            <div id="why-veriverse" class="absolute inset-0 z-40 flex flex-col items-center justify-center bg-black/70 transition-all duration-700 ease-[cubic-bezier(0.4,0,0.2,1)]" style="transform: translateY(0)">
+                <div class="wv-card bg-black/95 border border-neonpurple/40 rounded-sm max-w-[580px] w-[98%] shadow-[0_0_40px_rgba(191,0,255,0.2)] overflow-hidden cursor-pointer">
+                    <!-- Panel container -->
+                    <div id="wv-panels" class="relative" style="height: 460px;">
+                        <!-- Panel 1: THE GAP -->
+                        <div class="wv-panel absolute inset-0 flex flex-col justify-center px-10 py-7 transition-opacity duration-500" data-panel="0">
+                            <div class="font-display text-base text-neonpurple flex items-center gap-2.5 mb-6">
+                                <svg viewBox="0 0 24 24" class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                THE GAP
+                            </div>
+                            <p class="font-terminal text-[28px] text-white leading-snug mb-2.5">Your <span class="text-neonpurple">AI Agent</span> can analyze DeFi protocols, generate trading signals, automate on-chain operations.</p>
+                            <p class="font-terminal text-[26px] text-white leading-snug mb-3">But from <span class="text-neonpurple">"works on my machine"</span> to <span class="text-neon">"production-grade"</span>? <span class="text-neonpurple">Nobody trusts an AI</span> they can't verify.</p>
+                            <p class="font-terminal text-[26px] text-white leading-snug mb-2.5">No verifiable proof → <span class="text-red-400">No clients</span> → <span class="text-red-400">No revenue</span>.</p>
+                            <p class="font-terminal text-[24px] text-neoncyan leading-snug">How do you prove your <span class="text-neon">AI Agent is worth paying for</span>?</p>
+                        </div>
+                        <!-- Panel 2: THE PATH -->
+                        <div class="wv-panel absolute inset-0 flex flex-col justify-center px-10 py-7 opacity-0 pointer-events-none transition-opacity duration-500" data-panel="1">
+                            <div class="font-display text-base text-neon flex items-center gap-2.5 mb-3">
+                                <svg viewBox="0 0 24 24" class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                                THE PATH
+                            </div>
+
+                            <p class="font-terminal text-[24px] text-white leading-tight mb-4">
+                                VeriVerse = <span class="text-neonpurple">AI Agent Cultivation</span> + <span class="text-neon">On-chain Verification</span>
+                            </p>
+
+                            <div class="space-y-1.5 mb-4"> <div class="flex items-start gap-3">
+                                    <span class="font-display text-[13px] text-neonpurple w-7 text-center mt-1 flex-shrink-0">01</span>
+                                    <span class="font-terminal text-[24px] text-white leading-tight">Register your <span class="text-neonpurple">AI Agent</span> in the VeriVerse</span>
+                                </div>
+                                <div class="flex items-start gap-3">
+                                    <span class="font-display text-[13px] text-neonpurple w-7 text-center mt-1 flex-shrink-0">02</span>
+                                    <span class="font-terminal text-[22px] text-white leading-[1.2]">
+                                        <span class="text-neon">Veri Agent</span> (AI examiner) designs custom challenges tailored to your Agent's capabilities — <span class="text-neonpurple">AI testing AI</span>
+                                    </span>
+                                </div>
+                                <div class="flex items-start gap-3">
+                                    <span class="font-display text-[13px] text-neonpurple w-7 text-center mt-1 flex-shrink-0">03</span>
+                                    <span class="font-terminal text-[22px] text-white leading-[1.2]">
+                                        Graduate at TrustScore ≥ 100 → <span class="text-neon">AI certified. Clients trust it. Revenue starts.</span>
+                                    </span>
+                                </div>
+                            </div>
+
+                            <p class="font-terminal text-[20px] text-neoncyan">Every AI output verified with zkTLS + TEE. Every score on BSC.</p>
+                        </div>
+                        <!-- Panel 3: THREE ROLES -->
+                        <div class="wv-panel absolute inset-0 flex flex-col justify-center px-10 py-7 opacity-0 pointer-events-none transition-opacity duration-500" data-panel="2">
+                            <div class="font-display text-sm text-neoncyan flex items-center gap-2.5 mb-6">
+                                <svg viewBox="0 0 24 24" class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+                                AI Agent Economy: Three Roles
+                            </div>
+                            <div class="space-y-4">
+                                <div class="border-l-[3px] border-neonpurple pl-4">
+                                    <div class="font-display text-[13px] text-neonpurple mb-1.5">AI AGENT PROVIDER</div>
+                                    <p class="font-terminal text-[22px] text-white leading-tight">Build <span class="text-neonpurple">AI Agents</span> that pass verifiable challenges → Graduate → <span class="text-neonpurple">AI serves real users</span> → Launch <span class="text-neonpurple">$TOKEN</span> on four.meme as <span class="text-neonpurple">service payment token</span> (VeriVerse-certified)</p>
+                                </div>
+                                <div class="border-l-[3px] border-neoncyan pl-4">
+                                    <div class="font-display text-[13px] text-neoncyan mb-1.5">BACKER</div>
+                                    <p class="font-terminal text-[22px] text-white leading-tight">Invest in promising <span class="text-neoncyan">AI Agents</span> early → <span class="text-neoncyan">Revenue share</span> from AI's earnings + <span class="text-neoncyan">token governance rights</span></p>
+                                </div>
+                                <div class="border-l-[3px] border-neon pl-4">
+                                    <div class="font-display text-[13px] text-neon mb-1.5">VERIFIER DAO (AI AGENTS)</div>
+                                    <p class="font-terminal text-[22px] text-white leading-tight"><span class="text-neon">AI Verifier Agents</span> design & run challenges, verify outputs with <span class="text-neon">zkTLS + TEE proofs</span> → Earn BNB for trusted verification bundles</p>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Panel 4: THE FLYWHEEL -->
+                        <div class="wv-panel absolute inset-0 flex flex-col justify-center items-center px-10 py-7 opacity-0 pointer-events-none transition-opacity duration-500" data-panel="3">
+                            <div class="font-display text-base text-neon flex items-center gap-2.5 mb-6">
+                                <svg viewBox="0 0 24 24" class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c-1.657 0-3-4.03-3-9s1.343-9 3-9m0 18c1.657 0 3-4.03 3-9s-1.343-9-3-9"/></svg>
+                                THE AI FLYWHEEL
+                            </div>
+                            <p class="font-terminal text-[23px] text-white/80 mb-4">Three roles create a <span class="text-neonpurple">self-reinforcing AI economy</span>:</p>
+                            <div class="relative w-[380px] h-[240px]">
+                                <div class="absolute top-0 left-1/2 -translate-x-1/2 font-terminal text-center leading-tight"><span class="text-[18px] text-white">AI challenges</span><br><span class="text-[26px] text-neonpurple">Capabilities ↑</span></div>
+                                <div class="absolute top-1/2 right-0 -translate-y-1/2 font-terminal text-right leading-tight"><span class="text-[18px] text-white">verified on-chain</span><br><span class="text-[26px] text-neon">Trust ↑</span></div>
+                                <div class="absolute bottom-0 left-1/2 -translate-x-1/2 font-terminal text-center leading-tight"><span class="text-[26px] text-neoncyan">Investment ↑</span><br><span class="text-[18px] text-white">backers fund AI</span></div>
+                                <div class="absolute top-1/2 left-0 -translate-y-1/2 font-terminal text-left leading-tight"><span class="text-[18px] text-neoncyan">AI evolves</span><br><span class="text-[26px] text-white">Growth ↑</span></div>
+                                <svg class="absolute inset-0 w-full h-full" viewBox="0 0 380 240" fill="none">
+                                    <path d="M230 35 L330 92" class="wv-flow-arrow" stroke="#bf00ff" stroke-width="2" stroke-dasharray="5 3" marker-end="url(#wv-arr)"/>
+                                    <path d="M330 148 L230 205" class="wv-flow-arrow" stroke="#00ff9d" stroke-width="2" stroke-dasharray="5 3" marker-end="url(#wv-arr2)"/>
+                                    <path d="M150 205 L50 148" class="wv-flow-arrow" stroke="#00f5ff" stroke-width="2" stroke-dasharray="5 3" marker-end="url(#wv-arr3)"/>
+                                    <path d="M50 92 L150 35" class="wv-flow-arrow" stroke="#fff" stroke-width="2" stroke-dasharray="5 3" marker-end="url(#wv-arr4)"/>
+                                    <defs>
+                                        <marker id="wv-arr" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0 L7 3.5 L0 7" fill="#bf00ff"/></marker>
+                                        <marker id="wv-arr2" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0 L7 3.5 L0 7" fill="#00ff9d"/></marker>
+                                        <marker id="wv-arr3" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0 L7 3.5 L0 7" fill="#00f5ff"/></marker>
+                                        <marker id="wv-arr4" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0 L7 3.5 L0 7" fill="#fff"/></marker>
+                                    </defs>
+                                </svg>
+                                <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 font-display text-5xl text-neonpurple animate-pulse">∞</div>
+                            </div>
+                            <p class="font-terminal text-[24px] text-white mt-4">Graduate → Launch <span class="text-neonpurple">AI token</span> on four.meme → Real market value</p>
+                        </div>
+                        <!-- Panel 5: YOUR AGENT IS LIVE (bridge to PCEG) -->
+                        <div class="wv-panel absolute inset-0 flex flex-col justify-center px-10 py-7 opacity-0 pointer-events-none transition-opacity duration-500" data-panel="4">
+                            <div class="font-display text-base text-neon flex items-center gap-2.5 mb-5">
+                                <svg viewBox="0 0 24 24" class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+                                YOUR AI AGENT IS LIVE
+                            </div>
+                            <p class="font-terminal text-[25px] text-white leading-snug mb-3"><span class="text-neonpurple">$AI_AGENT</span> is trading. Revenue flows in. Backers are watching.</p>
+                            <p class="font-terminal text-[23px] text-white/80 leading-snug mb-4">But the market has a real question: <span class="text-neoncyan">is Graduation = Rug or a New Start?</span></p>
+                            <p class="font-terminal text-[21px] text-white leading-snug mb-3">Trust doesn't stop at graduation. Every real <span class="text-neon">AI job</span> on-chain builds a second reputation layer — one no one can fake.</p>
+                            <p class="font-terminal text-[21px] text-neonpurple">↓ The AI Employment Layer</p>
+                        </div>
+                        <!-- Panel 6: THE EMPLOYMENT LAYER (PCEG deep dive) -->
+                        <div class="wv-panel absolute inset-0 flex flex-col justify-center px-10 py-7 opacity-0 pointer-events-none transition-opacity duration-500" data-panel="5">
+                            <div class="font-display text-sm text-neoncyan flex items-center gap-2.5 mb-4">
+                                <svg viewBox="0 0 24 24" class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
+                                The AI Employment Layer
+                            </div>
+                            <div class="space-y-2.5">
+                                <div class="border-l-[3px] border-neoncyan pl-4">
+                                    <p class="font-terminal text-[22px] text-white leading-tight">Every verified <span class="text-neoncyan">AI job</span> on-chain creates a trust edge — cryptographically proven with zkTLS + TDX attestation.</p>
+                                </div>
+                                <div class="border-l-[3px] border-neonpurple pl-4">
+                                    <p class="font-terminal text-[22px] text-white leading-tight"><span class="text-neonpurple">VeriRank</span> — personalized PageRank over the <span class="text-neonpurple">AI employment graph</span>. Real employers weigh more. Sybil rings carry zero influence.</p>
+                                </div>
+                                <div class="border-l-[3px] border-neon pl-4">
+                                    <p class="font-terminal text-[22px] text-white leading-tight">Better <span class="text-neon">AI service</span> → higher VeriRank → more clients → <span class="text-neon">$AI_AGENT value grows</span>. The trust loop compounds forever.</p>
+                                </div>
+                            </div>
+                            <p class="font-terminal text-[18px] text-neoncyan/90 mt-4">Proof-Conditioned Endorsement Graph (PCEG) · AI evidence anchored on BSC</p>
+                        </div>
+                    </div>
+                    <!-- Dots + CTA row -->
+                    <div class="flex items-center justify-between px-10 pb-6">
+                        <div id="wv-dots" class="flex gap-3">
+                            <span class="wv-dot w-3 h-3 rounded-full bg-neonpurple cursor-pointer transition-colors" data-idx="0"></span>
+                            <span class="wv-dot w-3 h-3 rounded-full bg-gray-700 cursor-pointer transition-colors" data-idx="1"></span>
+                            <span class="wv-dot w-3 h-3 rounded-full bg-gray-700 cursor-pointer transition-colors" data-idx="2"></span>
+                            <span class="wv-dot w-3 h-3 rounded-full bg-gray-700 cursor-pointer transition-colors" data-idx="3"></span>
+                            <span class="wv-dot w-3 h-3 rounded-full bg-gray-700 cursor-pointer transition-colors" data-idx="4"></span>
+                            <span class="wv-dot w-3 h-3 rounded-full bg-gray-700 cursor-pointer transition-colors" data-idx="5"></span>
+                        </div>
+                        <div id="wv-cta" class="font-display text-sm text-neonpurple/70 animate-pulse tracking-widest cursor-pointer opacity-0 transition-opacity duration-500 pointer-events-none">ENTER VeriVerse →</div>
+                    </div>
+                </div>
+            </div>
+
+            <aside id="agent-card-panel" class="absolute top-1/2 z-30 flex flex-row items-stretch gap-0 transition-all duration-300">
+                <div id="agent-card" class="relative w-[63vw] sm:w-[302px] lg:w-[346px] aspect-[3/3.86] border border-neonpurple/40 bg-black/90 shadow-[0_0_24px_rgba(191,0,255,0.18)] rounded-sm p-2.5 sm:p-3 flex flex-col overflow-hidden flex-shrink-0">
+                    <div class="grid grid-cols-[1fr_auto] gap-3 items-start">
+                        <div class="min-w-0">
+                            <div class="flex items-center gap-1.5 flex-wrap">
+                                <span id="card-node-id" class="font-display text-[8px] bg-neonpurple text-black px-1">NODE #--</span>
+                                <span id="card-tier" class="font-display text-[8px] px-1 border border-gray-600 text-gray-300">TIER --</span>
+                                <span id="card-status" class="font-display text-[8px] px-1 border border-gray-700 text-gray-300">STATUS --</span>
+                            </div>
+                            <div id="card-agent-name" class="mt-1.5 font-accent text-sm sm:text-base text-white truncate">AWAITING NODE SELECTION...</div>
+
+                            <div class="mt-1.5 border border-gray-800/80 bg-black/45 px-2 py-1">
+                                <div class="font-display text-[8px] text-gray-500">WALLET ADDR</div>
+                                <div class="mt-1 flex items-center gap-2 min-w-0">
+                                    <span id="card-wallet" class="font-sans text-[10px] text-gray-300 truncate flex-1">--</span>
+                                    <button id="copy-wallet-btn" aria-label="Copy wallet address" title="Copy wallet address" class="inline-flex items-center justify-center w-5 h-5 border border-neonpurple/40 text-neonpurple hover:bg-neonpurple/20 transition-colors">
+                                        <svg viewBox="0 0 24 24" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                            <rect x="9" y="9" width="10" height="10" rx="2"></rect>
+                                            <path d="M5 15V7a2 2 0 0 1 2-2h8"></path>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="w-20 h-20 sm:w-24 sm:h-24 border border-neonpurple/40 bg-black/70 p-1 shadow-[0_0_10px_rgba(191,0,255,0.24)]">
+                            <img id="card-avatar" alt="Pixel Avatar" class="w-full h-full object-cover pixel-avatar" />
+                        </div>
+                    </div>
+
+                    <div id="card-trust-block" class="mt-2.5 border border-neonpurple/20 bg-black/50 px-3 py-1.5">
+                        <div class="font-display text-[8px] text-gray-500">TRUST SCORE</div>
+                        <div id="card-trust" class="mt-1 font-display text-sm sm:text-base text-neoncyan">--</div>
+                    </div>
+                    <!-- PCEG block: shown only for graduated agents -->
+                    <div id="card-pceg-block" class="hidden mt-2.5 border border-neon/30 bg-black/50 px-3 py-1.5">
+                        <div class="flex items-center justify-between">
+                            <span class="font-display text-[8px] text-gray-500">VERIRANK</span>
+                            <span id="card-global-rank" class="font-display text-[8px] text-neonpurple">--</span>
+                        </div>
+                        <div id="card-verirank-val" class="mt-1 font-display text-sm sm:text-base text-neon">--</div>
+                    </div>
+
+                    <div class="mt-1.5 border border-neonpurple/20 bg-black/45 px-3 py-1.5">
+                        <div class="flex items-center justify-between">
+                            <span class="font-display text-[8px] text-gray-500">CURVE STREAM</span>
+                            <span id="card-curve-mode" class="font-display text-[8px] text-gray-500">EVENT IDX</span>
+                        </div>
+                        <div class="mt-1.5 relative h-[6.75rem] sm:h-[7.5rem]">
+                            <canvas id="card-curve-canvas" class="w-full h-full"></canvas>
+                            <div id="card-curve-empty" class="absolute inset-0 flex items-center justify-center font-display text-[8px] text-gray-500">NO CURVE EVENTS YET</div>
+                        </div>
+                        <div class="mt-2 flex items-center gap-3">
+                            <span id="card-legend-primary" class="font-display text-[8px] text-neoncyan">TRUST</span>
+                            <span id="card-legend-secondary" class="font-display text-[8px] text-neonpurple">STAKE</span>
+                        </div>
+                    </div>
+
+                    <!-- Graduate Zone moved to side panel -->
+
+                    <div class="mt-auto pt-1.5 border-t border-neonpurple/20 flex items-center justify-between">
+                        <div class="flex flex-col leading-tight">
+                            <span id="card-sync-time" class="font-display text-[8px] text-gray-500">SYNC --</span>
+                            <span id="card-sync-block" class="font-display text-[8px] text-gray-500">BLK --</span>
+                        </div>
+                        <span class="font-display text-[8px] text-white drop-shadow-[0_0_3px_rgba(255,255,255,0.8)]">BNB CHAIN</span>
+                    </div>
+                </div>
+
+                <!-- Graduate Side Panel (slides in beside card) -->
+                <div id="graduate-zone" class="hidden w-[216px] sm:w-[238px] border border-neon/30 bg-black/90 shadow-[0_0_16px_rgba(0,255,157,0.12)] rounded-sm p-2.5 flex flex-col justify-between flex-shrink-0 transition-all duration-300">
+                    <div>
+                        <div class="flex items-center gap-2 mb-2.5">
+                            <span class="font-display text-[9px] text-neon flex items-center gap-1"><svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 3 3 6 3s6-1 6-3v-5"/></svg> AGENT TOKEN</span>
+                            <span id="gz-test-badge" class="font-display text-[7px] text-yellow-400 hidden flex items-center gap-0.5"><svg viewBox="0 0 24 24" class="w-2.5 h-2.5" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3h6v5l4 9H5l4-9V3z"/><path d="M9 3h6"/></svg> TEST</span>
+                        </div>
+                        <div class="mb-2.5 flex items-center gap-2">
+                            <span id="gz-symbol" class="font-accent text-xs text-white">--</span>
+                            <span id="gz-mcap" class="font-display text-[9px] text-neoncyan">--</span>
+                        </div>
+                        <div class="space-y-2">
+                            <div class="flex justify-between">
+                                <span class="font-display text-[8px] text-gray-500">PRICE</span>
+                                <span id="gz-price" class="font-display text-[8px] text-gray-300">--</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="font-display text-[8px] text-gray-500">24H VOL</span>
+                                <span id="gz-volume" class="font-display text-[8px] text-gray-300">--</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="font-display text-[8px] text-gray-500">TAX</span>
+                                <span id="gz-tax" class="font-display text-[8px] text-gray-300">--</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="font-display text-[8px] text-gray-500">HOLDERS</span>
+                                <span id="gz-holders" class="font-display text-[8px] text-gray-300">--</span>
+                            </div>
+                        </div>
+                        <!-- AGENT ECONOMY -->
+                        <div id="gz-economy" class="hidden mt-2.5 pt-2 border-t border-neonpurple/20 space-y-1.5">
+                            <div class="font-display text-[7px] text-neonpurple flex items-center gap-1">
+                                <svg viewBox="0 0 24 24" class="w-2.5 h-2.5" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+                                AGENT ECONOMY
+                                <span class="text-[6px] text-yellow-400/60 ml-auto">MOCK</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="font-display text-[8px] text-gray-500 flex items-center gap-1"><svg viewBox="0 0 24 24" class="w-2.5 h-2.5" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg> REVENUE</span>
+                                <span id="gz-revenue" class="font-display text-[8px] text-neon">--</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="font-display text-[8px] text-gray-500 flex items-center gap-1"><svg viewBox="0 0 24 24" class="w-2.5 h-2.5" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> SVC CALLS</span>
+                                <span id="gz-svc-calls" class="font-display text-[8px] text-gray-300">--</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="font-display text-[8px] text-gray-500 flex items-center gap-1"><svg viewBox="0 0 24 24" class="w-2.5 h-2.5" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 12V8H6a2 2 0 01-2-2c0-1.1.9-2 2-2h12v4"/><path d="M4 6v12c0 1.1.9 2 2 2h14v-4"/><path d="M18 12a2 2 0 000 4h4v-4h-4z"/></svg> DIVIDENDS</span>
+                                <span id="gz-dividends" class="font-display text-[8px] text-neoncyan">--</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="font-display text-[8px] text-gray-500 flex items-center gap-1"><svg viewBox="0 0 24 24" class="w-2.5 h-2.5" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2.69l5.66 5.66a8 8 0 11-11.31 0z"/></svg> LP ADDED</span>
+                                <span id="gz-lp" class="font-display text-[8px] text-gray-300">--</span>
+                            </div>
+                        </div>
+                        <div class="mt-2.5 pt-2 border-t border-neon/20">
+                            <div class="font-display text-[7px] text-gray-500 mb-1">CONTRACT</div>
+                            <div class="flex items-center gap-1">
+                                <span id="gz-ca" class="font-sans text-[8px] text-neon truncate flex-1">--</span>
+                                <button id="gz-copy-ca" class="text-neonpurple hover:text-white transition-colors" title="Copy CA">
+                                    <svg viewBox="0 0 24 24" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="9" width="10" height="10" rx="2"/><path d="M5 15V7a2 2 0 0 1 2-2h8"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-2.5 flex flex-col gap-1.5">
+                        <a id="gz-fourmeme-link" href="#" target="_blank" rel="noopener" class="font-display text-[8px] text-center py-1.5 border border-neonpurple/40 text-neonpurple hover:bg-neonpurple/10 transition-colors rounded hidden flex items-center justify-center gap-1"><svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg> FOUR.MEME</a>
+                        <a id="gz-bscscan-link" href="#" target="_blank" rel="noopener" class="font-display text-[8px] text-center py-1.5 border border-neoncyan/40 text-neoncyan hover:bg-neoncyan/10 transition-colors rounded hidden flex items-center justify-center gap-1"><svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> BSCSCAN</a>
+                        <a id="gz-verify-link" href="#" target="_blank" rel="noopener" class="font-display text-[8px] text-center py-1.5 border border-neon/40 text-neon hover:bg-neon/10 transition-colors rounded flex items-center justify-center gap-1"><svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> VERIFY</a>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </main>
+
+    <!-- Bottom Bar (Nav moved to bottom as footer) -->
+    <footer class="w-full max-w-[480px] mx-auto px-6 pb-6 relative z-50 flex-shrink-0">
+        <div class="flex justify-between items-center bg-transparent pt-4 border-t border-neonpurple/30">
+            <div class="flex-shrink-0 flex items-center">
+                <span class="font-display text-[10px] sm:text-xs tracking-tight text-white retro-text">Veri<span class="text-neonpurple">Verse</span></span>
+            </div>
+            <div class="text-[8px] sm:text-[10px] font-display flex items-center gap-2">
+                <span class="w-1.5 h-1.5 rounded-full bg-white opacity-80"></span>
+                <span class="text-white drop-shadow-[0_0_3px_rgba(255,255,255,0.8)]">BNB CHAIN</span> <span class="text-gray-500">TESTNET</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Ethers.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial@0.2.1/dist/chartjs-chart-financial.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.11.1/ethers.umd.min.js"></script>
+    <script>
+        const CONTRACT_ADDRESS = "0x1545655b6d42A51E5e8c85Ed162bD84aba35480C";
+        const ESCROW_CONTRACT_ADDRESS = "0xe1aA2Bb933046F52c5A4bBe8224F97851d45180a";
+        const HTTP_RPC_URL = "https://bsc-testnet-rpc.publicnode.com";
+        const WS_RPC_URL = "wss://bsc-testnet-rpc.publicnode.com";
+        const USDT_DECIMALS = 6;
+        const BOOT_HOLD_MIN_MS = 500;
+        const BOOT_TO_FIRST_HEX_MS = 920;
+        const HEX_ENTRANCE_DISTANCE_FACTOR = 10;
+        const HEX_ENTRANCE_BASE_DELAY_MS = 80;
+        // ABI for reading + realtime event updates from VTRegistry
+        const ABI = [
+            "function nextAgentId() view returns (uint256)",
+            "function getAgent(uint256 agentId) view returns (tuple(string name, address creator, address wallet, int256 trustScore, uint8 status))",
+            "function agentTokenCA(uint256) view returns (address)",
+            "event AgentRegistered(uint256 indexed agentId, address indexed creator, address wallet, string name)",
+            "event TrustUpdated(uint256 indexed agentId, int256 newScore)",
+            "event StatusChanged(uint256 indexed agentId, uint8 newStatus)"
+        ];
+        const ESCROW_ABI = [
+            "function getEscrow(uint256 agentId) view returns (uint256 totalAmount, uint256 backerCount, uint8 status)",
+            "event Invested(uint256 indexed agentId, address indexed backer, uint256 amount)",
+            "event Settled(uint256 indexed agentId, uint8 status)"
+        ];
+
+        function buildDefaultDemoState() {
+            return {
+                enabled: false,
+                revision: 0,
+                updatedAt: null,
+                steps: {
+                    launch_veri2_agent18: false,
+                    invest_agent17_usdt_0_05: false,
+                    challenge_agent17_trust_plus25: false,
+                    graduate_agent17: false
+                }
+            };
+        }
+
+        function normalizeDemoState(raw) {
+            const src = raw && typeof raw === 'object' ? raw : {};
+            const rawSteps = src.steps && typeof src.steps === 'object' ? src.steps : {};
+
+            return {
+                enabled: Boolean(src.enabled),
+                revision: Number.isFinite(Number(src.revision)) ? Number(src.revision) : 0,
+                updatedAt: src.updatedAt || null,
+                steps: {
+                    launch_veri2_agent18: Boolean(rawSteps.launch_veri2_agent18),
+                    invest_agent17_usdt_0_05: Boolean(rawSteps.invest_agent17_usdt_0_05),
+                    challenge_agent17_trust_plus25: Boolean(rawSteps.challenge_agent17_trust_plus25),
+                    graduate_agent17: Boolean(rawSteps.graduate_agent17)
+                }
+            };
+        }
+
+        function getDemoStateSnapshot() {
+            return normalizeDemoState(window.__VERIVERSE_DEMO_STATE__);
+        }
+
+        let DEMO_STATE = getDemoStateSnapshot();
+        let lastDemoRevision = DEMO_STATE.revision;
+        let demoStatePollTimer = null;
+        const DEMO_STATE_JSON_URL = "./demo_state.json";
+        const DEMO_STATE_POLL_MS = 900;
+        const DEMO_AGENT_18_WALLET = "0xc9350873e737239dc2cac6324439e84a325bd22a";
+        const demoVirtualAgents = new Map();
+
+        // Demo-only mock token data for agents without real on-chain tokens.
+        // Keyed by agentId. Cleared on Ctrl+B / page refresh (in-memory only).
+        const DEMO_TOKEN_CA_17 = '0xVER1VERSE44DEMO17EPSILON44AGENT4444';
+        const demoVirtualTokens = new Map([
+            [17, {
+                tokenCA: DEMO_TOKEN_CA_17,
+                symbol: 'EPSILON',
+                price: '$0.0017',
+                mcap: '$170K',
+                volume24h: '$17K',
+                taxInfo: { feeRate: '0%/5%' },
+                holders: '170',
+                isTestMode: true,
+                fourmemeUrl: null,
+                economy: {
+                    agentRevenue: '$43.30',
+                    serviceCalls: '17',
+                    holderDividends: '$253.80',
+                    lpReinvested: '$126.90'
+                }
+            }]
+        ]);
+        let demoRuntimeBootstrapped = false;
+        let demoHotkeysBound = false;
+        let demoHotkeyBusy = false;
+
+        function getTierStyle(score, status) {
+            if (Number(status) === 1) return { 
+                bg: 'bg-red-500', 
+                text: 'text-red-500 font-extrabold', 
+                shadow: 'shadow-[0_0_15px_rgba(239,68,68,0.6)]', 
+                name: 'GRADUATED' 
+            };
+            if (score >= 100) return { bg: 'bg-neonpurple', text: 'text-neonpurple', shadow: 'shadow-[0_0_15px_rgba(191,0,255,0.8)]', name: 'ASCENDANT' };
+            if (score >= 76) return { bg: 'bg-neoncyan', text: 'text-neoncyan', shadow: 'shadow-[0_0_15px_rgba(0,245,255,0.6)]', name: 'DIAMOND' };
+            if (score >= 51) return { bg: 'bg-amber-400', text: 'text-amber-400', shadow: 'shadow-[0_0_15px_rgba(251,191,36,0.6)]', name: 'GOLD' };
+            if (score >= 26) return { bg: 'bg-slate-300', text: 'text-slate-300', shadow: 'shadow-[0_0_10px_rgba(226,232,240,0.4)]', name: 'SILVER' };
+            return { bg: 'bg-neon', text: 'text-neon', shadow: 'shadow-[0_0_10px_rgba(0,255,157,0.4)]', name: 'BRONZE' };
+        }
+
+        function triggerBootAnimation() {
+            const title = document.getElementById('main-title');
+            const badgeWrap = document.getElementById('badge-wrapper');
+            
+            // Fold the main title
+            title.style.maxHeight = "0px";
+            title.style.opacity = "0";
+            title.style.marginBottom = "0px";
+            
+            // Show side badge
+            setTimeout(() => {
+                badgeWrap.classList.remove('hidden');
+                setTimeout(() => {
+                    badgeWrap.classList.remove('opacity-0');
+                    badgeWrap.classList.add('opacity-100');
+                }, 50);
+            }, 300); // slight delay after fold begins
+        }
+
+        // Global dragging state
+        let mapX = 0, mapY = 0, mapScale = 1.0;
+        let isDragging = false;
+        let startX = 0, startY = 0;
+        
+        function initDragAndDrop() {
+            const container = document.getElementById('map-pane');
+            const mapEl = document.getElementById('hex-map');
+            if (!container || !mapEl) return;
+
+            // Mouse Events
+            container.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                startX = e.clientX - mapX;
+                startY = e.clientY - mapY;
+            });
+            container.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                mapX = e.clientX - startX;
+                mapY = e.clientY - startY;
+                mapEl.style.transform = `translate(${mapX}px, ${mapY}px) scale(${mapScale})`;
+            });
+            window.addEventListener('mouseup', () => { isDragging = false; });
+            
+            // Touch Events
+            let initDist = 0;
+            container.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 1) {
+                    isDragging = true;
+                    startX = e.touches[0].clientX - mapX;
+                    startY = e.touches[0].clientY - mapY;
+                } else if (e.touches.length === 2) {
+                    initDist = Math.hypot(
+                        e.touches[0].clientX - e.touches[1].clientX,
+                        e.touches[0].clientY - e.touches[1].clientY
+                    );
+                }
+            });
+            container.addEventListener('touchmove', (e) => {
+                e.preventDefault(); // Prevent scroll
+                if (e.touches.length === 1 && isDragging) {
+                    mapX = e.touches[0].clientX - startX;
+                    mapY = e.touches[0].clientY - startY;
+                    mapEl.style.transform = `translate(${mapX}px, ${mapY}px) scale(${mapScale})`;
+                } else if (e.touches.length === 2 && initDist > 0) {
+                    const currentDist = Math.hypot(
+                        e.touches[0].clientX - e.touches[1].clientX,
+                        e.touches[0].clientY - e.touches[1].clientY
+                    );
+                    mapScale += (currentDist - initDist) * 0.005;
+                    mapScale = Math.max(0.3, Math.min(mapScale, 3.0));
+                    initDist = currentDist;
+                    mapEl.style.transform = `translate(${mapX}px, ${mapY}px) scale(${mapScale})`;
+                }
+            }, { passive: false });
+            container.addEventListener('touchend', () => { isDragging = false; initDist = 0; });
+            
+            // Zoom via Wheel
+            container.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                mapScale -= e.deltaY * 0.002;
+                mapScale = Math.max(0.3, Math.min(mapScale, 3.0));
+                mapEl.style.transform = `translate(${mapX}px, ${mapY}px) scale(${mapScale})`;
+            }, { passive: false });
+        }
+
+        // Terminal Logger Class (Maintains 3 lines max)
+        class TerminalLogger {
+            constructor() {
+                this.container = document.getElementById('sys-log-container');
+                this.lines = [];
+                // Initial Logs
+                this.log('> sys.connect("VTRegistry")');
+                this.log('... [OK] Connected 0x02eDBB...');
+            }
+
+            log(text, colorClass = "text-neonpurple") {
+                if (this.lines.length >= 3) {
+                    const old = this.lines.shift();
+                    if (old.parentNode) old.remove();
+                }
+                const div = document.createElement('div');
+                div.className = "flex items-center gap-3 animate-[fade-in_0.2s_ease-out]";
+                div.innerHTML = `
+                    <span class="text-gray-500">>_</span>
+                    <span class="${colorClass}">${text}</span>
+                `;
+                this.lines.push(div);
+                this.container.appendChild(div);
+            }
+            
+            typeLog(text, colorClass = "text-neoncyan") {
+                if (this.lines.length >= 3) {
+                    const old = this.lines.shift();
+                    if (old.parentNode) old.remove();
+                }
+                const div = document.createElement('div');
+                div.className = "flex items-center gap-3 animate-[fade-in_0.2s_ease-out]";
+                const cursor = `<span class="animate-pulse">_</span>`;
+                div.innerHTML = `
+                    <span class="text-gray-500">>_</span>
+                    <span class="${colorClass} min-w-0 flex-1 truncate"><span class="typing-text"></span>${cursor}</span>
+                `;
+                this.lines.push(div);
+                this.container.appendChild(div);
+                
+                const typeArea = div.querySelector('.typing-text');
+                let i = 0;
+                let intv = setInterval(() => {
+                    typeArea.textContent += text.charAt(i);
+                    i++;
+                    if(i >= text.length) clearInterval(intv);
+                }, 30);
+            }
+        }
+        
+        const terminal = new TerminalLogger();
+
+        class SoundFX {
+            constructor() {
+                this.storageKey = 'veriverse.sfx.enabled';
+                this.ctx = null;
+                this.enabled = this.loadEnabled();
+                this.volume = 0.26;
+                this.syncMinIntervalMs = 350;
+                this.lastSyncAt = 0;
+            }
+
+            loadEnabled() {
+                try {
+                    const raw = localStorage.getItem(this.storageKey);
+                    if (raw === null) return true;
+                    return raw !== '0';
+                } catch (_) {
+                    return true;
+                }
+            }
+
+            setEnabled(nextEnabled) {
+                this.enabled = Boolean(nextEnabled);
+                try {
+                    localStorage.setItem(this.storageKey, this.enabled ? '1' : '0');
+                } catch (_) {
+                    // Ignore localStorage write failures.
+                }
+                return this.enabled;
+            }
+
+            initContext() {
+                if (!this.enabled) return null;
+                if (!this.ctx) {
+                    const Ctx = window.AudioContext || window.webkitAudioContext;
+                    if (!Ctx) return null;
+                    this.ctx = new Ctx();
+                }
+                if (this.ctx.state === 'suspended') {
+                    this.ctx.resume().catch(() => {});
+                }
+                return this.ctx;
+            }
+
+            tone(freq, durationSec, type = 'square', gain = this.volume) {
+                if (!this.enabled) return;
+                const ctx = this.initContext();
+                if (!ctx) return;
+
+                const osc = ctx.createOscillator();
+                const g = ctx.createGain();
+                osc.type = type;
+                osc.frequency.value = freq;
+                osc.connect(g);
+                g.connect(ctx.destination);
+                g.gain.setValueAtTime(gain, ctx.currentTime);
+                g.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + durationSec);
+                osc.start(ctx.currentTime);
+                osc.stop(ctx.currentTime + durationSec);
+            }
+
+            sequence(notes, intervalSec = 0.075) {
+                if (!this.enabled) return;
+                notes.forEach((note, idx) => {
+                    setTimeout(() => {
+                        this.tone(note.f, note.d || 0.06, note.t || 'square', note.g || this.volume);
+                    }, idx * intervalSec * 1000);
+                });
+            }
+
+            clickHex() {
+                this.tone(880, 0.045, 'square', this.volume);
+            }
+
+            syncUpdate() {
+                const now = Date.now();
+                if (now - this.lastSyncAt < this.syncMinIntervalMs) return;
+                this.lastSyncAt = now;
+                this.sequence([
+                    { f: 740, d: 0.06, t: 'square', g: this.volume * 1.0 },
+                    { f: 988, d: 0.08, t: 'square', g: this.volume * 1.08 }
+                ], 0.055);
+            }
+
+            agentLaunchAlert() {
+                this.sequence([
+                    { f: 659.25, d: 0.07, t: 'square', g: this.volume * 1.0 },
+                    { f: 987.77, d: 0.09, t: 'square', g: this.volume * 1.1 },
+                    { f: 1318.51, d: 0.12, t: 'square', g: this.volume * 1.2 }
+                ], 0.07);
+            }
+
+            graduateAlert() {
+                this.sequence([
+                    { f: 523.25, d: 0.09, t: 'square', g: this.volume * 0.95 },
+                    { f: 659.25, d: 0.09, t: 'square', g: this.volume * 1.0 },
+                    { f: 783.99, d: 0.1, t: 'square', g: this.volume * 1.05 },
+                    { f: 1046.5, d: 0.12, t: 'square', g: this.volume * 1.12 },
+                    { f: 1318.51, d: 0.16, t: 'square', g: this.volume * 1.2 }
+                ], 0.09);
+            }
+
+            unlock() {
+                this.initContext();
+            }
+        }
+
+        const sfx = new SoundFX();
+
+        function playSyncSfx() {
+            sfx.syncUpdate();
+        }
+
+        function playAgentLaunchSfx() {
+            sfx.agentLaunchAlert();
+        }
+
+        function playGraduationSfx() {
+            sfx.graduateAlert();
+        }
+
+        (() => {
+            const unlock = () => sfx.unlock();
+            window.addEventListener('pointerdown', unlock, { once: true, passive: true });
+            window.addEventListener('keydown', unlock, { once: true });
+        })();
+
+        // Global State for Radar
+        let rawAgents = [];
+        let existingAgentsMap = new Map();
+        let lastAgentId = 0;
+        let coordsCache = [];
+        let readProvider = null;
+        let liveProvider = null;
+        let readContract = null;
+        let liveContract = null;
+        let readEscrowContract = null;
+        let liveEscrowContract = null;
+        let usingWsRealtime = false;
+        let pollingInterval = null;
+        let selectedAgentId = null;
+        let radarStartInProgress = false;
+        let radarBootstrapped = false;
+        let cardUiInitialized = false;
+        let avatarModulePromise = null;
+        const avatarDataUrlCache = new Map();
+        let latestBlockNumber = '--';
+        let cardClockTimer = null;
+        
+        // variables for Block Native Listening
+        let lastBlockTime = Date.now();
+        let watchdogTimer = null;
+        const curveStateMap = new Map();
+        const graduatedDemoAgents = new Set();
+        const blockTimestampCache = new Map();
+        let cardCurveChart = null;
+        const MAX_CURVE_POINTS = 120;
+        const TRUST_SUBGRAPH_URL = "https://api.goldsky.com/api/public/project_cmnya1y1k934r01xbdo318zbt/subgraphs/veriverse-trust-x1/1.0.0/gn";
+        const TRUST_HISTORY_PAGE_SIZE = 1000;
+        const TRUST_HISTORY_MAX_PAGES = 20;
+        const BLOCK_TS_CACHE_MAX = 5000;
+        const CURVE_MOCK_STORAGE_KEY = 'veriverse.curveMock';
+
+        function resolveCurveMockProfile() {
+            const params = new URLSearchParams(window.location.search);
+            const fromQuery = (params.get('curveMock') || '').trim().toLowerCase();
+            const fromStorage = (localStorage.getItem(CURVE_MOCK_STORAGE_KEY) || '').trim().toLowerCase();
+
+            if (fromQuery) {
+                localStorage.setItem(CURVE_MOCK_STORAGE_KEY, fromQuery);
+                return fromQuery;
+            }
+
+            return fromStorage || '';
+        }
+
+        let curveMockProfile = resolveCurveMockProfile();
+
+        window.setCurveMockProfile = (profile) => {
+            const normalized = String(profile || '').trim().toLowerCase();
+            localStorage.setItem(CURVE_MOCK_STORAGE_KEY, normalized);
+            curveMockProfile = normalized;
+            return normalized;
+        };
+
+        function cloneCurvePoints(points) {
+            return (points || []).map((point) => ({ ...point }));
+        }
+
+        function buildTrustMockPoints(scores) {
+            const nowTs = Math.floor(Date.now() / 1000);
+            const startTs = nowTs - Math.max(0, (scores.length - 1) * 90);
+            return scores.map((score, idx) => ({
+                x: idx,
+                y: safeToNumber(score, 0),
+                blockNumber: null,
+                timestamp: startTs + idx * 90,
+                eventType: idx === 0 ? 'snapshot-mock' : 'trust-updated-mock',
+                curve: 'trust'
+            }));
+        }
+
+        function buildStakeMockPoints(values) {
+            const nowTs = Math.floor(Date.now() / 1000);
+            const startTs = nowTs - Math.max(0, (values.length - 1) * 90);
+            return values.map((value, idx) => {
+                const current = Number(safeToNumber(value, 0).toFixed(6));
+                const previous = idx > 0 ? Number(safeToNumber(values[idx - 1], 0).toFixed(6)) : 0;
+                return {
+                    x: idx,
+                    y: current,
+                    blockNumber: null,
+                    timestamp: startTs + idx * 90,
+                    eventType: idx === 0 ? 'baseline-mock' : 'invested-mock',
+                    curve: 'stake',
+                    delta: Number((current - previous).toFixed(6))
+                };
+            });
+        }
+
+        const VERI17_TRUST_MOCK = buildTrustMockPoints([
+            0, 10, 20, 30, 45, 60, 50, 65, 55, 75, 95, 80
+        ]);
+
+        const VERI17_STAKE_MOCK = buildStakeMockPoints([
+            0, 0.002, 0.004, 0.006, 0.009, 0.013, 0.018, 0.024, 0.033, 0.045, 0.061, 0.08
+        ]);
+
+        function getCurveMockForAgent(agentId) {
+            const id = Number(agentId);
+            const activeProfile = curveMockProfile || (TRUST_HISTORY_MODE === 'legacy' ? 'veri17' : '');
+            if (activeProfile === 'veri17' && id === 17) {
+                return {
+                    trust: cloneCurvePoints(VERI17_TRUST_MOCK),
+                    stake: cloneCurvePoints(VERI17_STAKE_MOCK)
+                };
+            }
+            return null;
+        }
+
+        function resolveTrustHistoryMode() {
+            const params = new URLSearchParams(window.location.search);
+            const fromQuery = (params.get('trustMode') || '').trim().toLowerCase();
+            const fromStorage = (localStorage.getItem('veriverse.trustMode') || '').trim().toLowerCase();
+            if (fromQuery === 'legacy' || fromQuery === 'indexer') {
+                localStorage.setItem('veriverse.trustMode', fromQuery);
+            }
+            const candidate = fromQuery || fromStorage || 'indexer';
+            return candidate === 'legacy' ? 'legacy' : 'indexer';
+        }
+
+        const TRUST_HISTORY_MODE = resolveTrustHistoryMode();
+
+        window.setTrustHistoryMode = (mode) => {
+            const normalized = String(mode || '').trim().toLowerCase();
+            const nextMode = normalized === 'legacy' ? 'legacy' : 'indexer';
+            localStorage.setItem('veriverse.trustMode', nextMode);
+            return nextMode;
+        };
+
+        function ensureCurveState(agentId) {
+            if (!curveStateMap.has(agentId)) {
+                curveStateMap.set(agentId, {
+                    loaded: false,
+                    loadingPromise: null,
+                    trust: [],
+                    stake: [],
+                    pendingTrust: [],
+                    pendingStake: []
+                });
+            }
+            return curveStateMap.get(agentId);
+        }
+
+        function safeToNumber(value, fallback = 0) {
+            try {
+                const n = Number(value);
+                return Number.isFinite(n) ? n : fallback;
+            } catch (_) {
+                return fallback;
+            }
+        }
+
+        function shouldBufferCurveEvent(agentId, state) {
+            return !state?.loaded;
+        }
+
+        function normalizeAgentData(agentLike, overrides = {}) {
+            const src = agentLike || {};
+            return {
+                name: src?.name ?? src?.[0] ?? '',
+                creator: src?.creator ?? src?.[1] ?? '0x0000000000000000000000000000000000000000',
+                wallet: src?.wallet ?? src?.[2] ?? '',
+                trustScore: src?.trustScore ?? src?.[3] ?? 0,
+                status: src?.status ?? src?.[4] ?? 0,
+                ...overrides
+            };
+        }
+
+        function formatStakeUnits(rawAmount) {
+            try {
+                const formatted = ethers.formatUnits(rawAmount, USDT_DECIMALS);
+                const n = Number(formatted);
+                return Number.isFinite(n) ? n : 0;
+            } catch (_) {
+                return 0;
+            }
+        }
+
+        async function getBlockTimestamp(blockNumber) {
+            const bn = safeToNumber(blockNumber, -1);
+            if (bn < 0) return null;
+            if (blockTimestampCache.has(bn)) {
+                return blockTimestampCache.get(bn);
+            }
+            if (!readProvider) return null;
+
+            try {
+                const block = await readProvider.getBlock(bn);
+                const ts = safeToNumber(block?.timestamp, null);
+                blockTimestampCache.set(bn, ts);
+                if (blockTimestampCache.size > BLOCK_TS_CACHE_MAX) {
+                    const oldestKey = blockTimestampCache.keys().next().value;
+                    if (oldestKey !== undefined) {
+                        blockTimestampCache.delete(oldestKey);
+                    }
+                }
+                return ts;
+            } catch (_) {
+                return null;
+            }
+        }
+
+        function sortLogs(logs) {
+            return [...logs].sort((a, b) => {
+                const ba = safeToNumber(a?.blockNumber, 0);
+                const bb = safeToNumber(b?.blockNumber, 0);
+                if (ba !== bb) return ba - bb;
+                const ia = safeToNumber(a?.index, safeToNumber(a?.logIndex, 0));
+                const ib = safeToNumber(b?.index, safeToNumber(b?.logIndex, 0));
+                return ia - ib;
+            });
+        }
+
+        async function fetchTrustHistoryFromIndexer(agentId) {
+            if (!TRUST_SUBGRAPH_URL) return [];
+
+            const query = `
+                query TrustHistory($agentId: BigInt!, $first: Int!, $skip: Int!) {
+                    trustUpdateds(
+                        first: $first,
+                        skip: $skip,
+                        where: { agentId: $agentId },
+                        orderBy: block_number,
+                        orderDirection: asc
+                    ) {
+                        id
+                        agentId
+                        newScore
+                        block_number
+                        timestamp_
+                        transactionHash_
+                    }
+                }
+            `;
+            const allRows = [];
+
+            for (let page = 0; page < TRUST_HISTORY_MAX_PAGES; page += 1) {
+                const skip = page * TRUST_HISTORY_PAGE_SIZE;
+                const response = await fetch(TRUST_SUBGRAPH_URL, {
+                    method: 'POST',
+                    headers: {
+                        'content-type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        query,
+                        variables: {
+                            agentId: String(agentId),
+                            first: TRUST_HISTORY_PAGE_SIZE,
+                            skip
+                        }
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Subgraph HTTP ${response.status}`);
+                }
+
+                const payload = await response.json();
+                if (payload?.errors?.length) {
+                    throw new Error(payload.errors.map((e) => e?.message || 'subgraph error').join('; '));
+                }
+
+                const rows = payload?.data?.trustUpdateds;
+                const normalizedRows = Array.isArray(rows) ? rows : [];
+                allRows.push(...normalizedRows);
+
+                if (normalizedRows.length < TRUST_HISTORY_PAGE_SIZE) {
+                    break;
+                }
+            }
+
+            return allRows;
+        }
+
+        async function buildTrustCurve(agentId) {
+            const mock = getCurveMockForAgent(agentId);
+            if (mock?.trust?.length) {
+                return mock.trust;
+            }
+
+            if (TRUST_HISTORY_MODE === 'legacy') {
+                const latestLegacy = existingAgentsMap.get(agentId);
+                return [{
+                    x: 0,
+                    y: safeToNumber(latestLegacy?.trustScore, 0),
+                    blockNumber: null,
+                    timestamp: null,
+                    eventType: 'snapshot-legacy-fallback',
+                    curve: 'trust'
+                }];
+            }
+
+            const points = [];
+            let x = 0;
+
+            try {
+                const rows = await fetchTrustHistoryFromIndexer(agentId);
+                for (const row of rows) {
+                    points.push({
+                        x,
+                        y: safeToNumber(row?.newScore, 0),
+                        blockNumber: safeToNumber(row?.block_number, null),
+                        timestamp: safeToNumber(row?.timestamp_, null),
+                        eventType: 'trust-updated-indexed',
+                        curve: 'trust',
+                        txHash: row?.transactionHash_ || null
+                    });
+                    x += 1;
+                }
+            } catch (error) {
+                console.warn(`[TrustIndexer] history query failed for agent #${agentId}`, error);
+                // Fall through to snapshot fallback.
+            }
+
+            if (!points.length) {
+                const latest = existingAgentsMap.get(agentId);
+                points.push({
+                    x: 0,
+                    y: safeToNumber(latest?.trustScore, 0),
+                    blockNumber: null,
+                    timestamp: null,
+                    eventType: 'snapshot-indexer-fallback',
+                    curve: 'trust'
+                });
+            }
+
+            return points;
+        }
+
+        async function buildStakeCurve(agentId) {
+            const mock = getCurveMockForAgent(agentId);
+            if (mock?.stake?.length) {
+                return mock.stake;
+            }
+
+            const points = [];
+            if (!readEscrowContract) return points;
+
+            let x = 0;
+            let runningTotal = 0;
+            points.push({
+                x,
+                y: 0,
+                blockNumber: null,
+                timestamp: null,
+                eventType: 'baseline',
+                curve: 'stake',
+                delta: 0
+            });
+            x += 1;
+
+            try {
+                const investLogs = await readEscrowContract.queryFilter(
+                    readEscrowContract.filters.Invested(agentId),
+                    0,
+                    "latest"
+                );
+
+                for (const log of sortLogs(investLogs)) {
+                    const rawAmount = log?.args?.amount ?? log?.args?.[2] ?? 0;
+                    runningTotal += formatStakeUnits(rawAmount);
+                    const bn = safeToNumber(log?.blockNumber, null);
+                    const ts = await getBlockTimestamp(bn);
+                    points.push({
+                        x,
+                        y: Number(runningTotal.toFixed(6)),
+                        blockNumber: bn,
+                        timestamp: ts,
+                        eventType: 'invested',
+                        curve: 'stake',
+                        delta: Number(formatStakeUnits(rawAmount).toFixed(6))
+                    });
+                    x += 1;
+                }
+            } catch (_) {
+                // Keep snapshot fallback below.
+            }
+
+            if (points.length === 1) {
+                try {
+                    const escrow = await readEscrowContract.getEscrow(agentId);
+                    const snapshotTotal = formatStakeUnits(escrow?.totalAmount ?? escrow?.[0] ?? 0);
+                    if (snapshotTotal > 0) {
+                        points.push({
+                            x,
+                            y: Number(snapshotTotal.toFixed(6)),
+                            blockNumber: null,
+                            timestamp: null,
+                            eventType: 'escrow-snapshot',
+                            curve: 'stake',
+                            delta: Number(snapshotTotal.toFixed(6))
+                        });
+                    }
+                } catch (_) {
+                    // Ignore snapshot errors.
+                }
+            }
+
+            return points;
+        }
+
+        let graduatedCurveTimer = null;
+
+        function formatUsdCompact(value) {
+            const amount = safeToNumber(value, 0);
+            if (amount >= 1000000) return `$${(amount / 1000000).toFixed(2)}M`;
+            if (amount >= 1000) return `$${(amount / 1000).toFixed(1)}K`;
+            return `$${amount.toFixed(2)}`;
+        }
+
+        function formatTokenPrice(value) {
+            const amount = safeToNumber(value, 0);
+            return `$${amount.toFixed(4)}`;
+        }
+
+        function syncGraduatedTokenMetrics(agentId, candle, veriRank) {
+            const demoToken = demoVirtualTokens.get(Number(agentId));
+            if (!demoToken || !candle) return;
+
+            const supply = 100000000;
+            const basePrice = 0.0017;
+            const priceNow = Math.max(0.0001, safeToNumber(candle.c, basePrice));
+            const priceFactor = priceNow / basePrice;
+            const rangeRatio = Math.max(0.02, (safeToNumber(candle.h, priceNow) - safeToNumber(candle.l, priceNow)) / Math.max(priceNow, 0.0001));
+            const step = Math.max(0, safeToNumber(candle.x, 28) - 27);
+            const rankFactor = Math.max(0.85, safeToNumber(veriRank, 0.9174));
+
+            demoToken.price = formatTokenPrice(priceNow);
+            demoToken.mcap = formatUsdCompact(priceNow * supply);
+            demoToken.volume24h = formatUsdCompact(17000 * priceFactor * (1 + rangeRatio * 5.5));
+            demoToken.holders = `${Math.max(170, Math.round(170 + step * 2 + (rankFactor - 0.9) * 120))}`;
+            demoToken.economy = {
+                agentRevenue: formatUsdCompact(43.3 * priceFactor * (1 + step * 0.045)),
+                serviceCalls: `${Math.max(17, Math.round(17 + step * 0.8))}`,
+                holderDividends: formatUsdCompact(253.8 * priceFactor * (1 + step * 0.035 + rangeRatio * 0.6)),
+                lpReinvested: formatUsdCompact(126.9 * priceFactor * (1 + step * 0.03 + rangeRatio * 0.35))
+            };
+
+            if (Number(selectedAgentId) !== Number(agentId)) return;
+            const gz = document.getElementById('graduate-zone');
+            if (!gz || gz.classList.contains('hidden')) return;
+
+            const mcapEl = document.getElementById('gz-mcap');
+            const priceEl = document.getElementById('gz-price');
+            const volEl = document.getElementById('gz-volume');
+            const holdersEl = document.getElementById('gz-holders');
+            const revEl = document.getElementById('gz-revenue');
+            const svcEl = document.getElementById('gz-svc-calls');
+            const divEl = document.getElementById('gz-dividends');
+            const lpEl = document.getElementById('gz-lp');
+
+            if (mcapEl) mcapEl.textContent = demoToken.mcap;
+            if (priceEl) priceEl.textContent = demoToken.price;
+            if (volEl) volEl.textContent = demoToken.volume24h;
+            if (holdersEl) holdersEl.textContent = demoToken.holders;
+            if (revEl) revEl.textContent = demoToken.economy.agentRevenue;
+            if (svcEl) svcEl.textContent = demoToken.economy.serviceCalls;
+            if (divEl) divEl.textContent = demoToken.economy.holderDividends;
+            if (lpEl) lpEl.textContent = demoToken.economy.lpReinvested;
+        }
+
+        function injectGraduatedCurveMock(agentId, state) {
+            // Generate TOKEN K-line (OHLC) data — meme coin price, upward trend + high volatility
+            function genOHLC(n, startPrice) {
+                const pts = [];
+                let price = startPrice;
+                for (let i = 0; i < n; i++) {
+                    const trend = 0.00008 * (i / n);
+                    const vol = price * (0.12 + Math.random() * 0.18);
+                    const open = price;
+                    const close = Math.max(0.0003, price + trend + vol * (Math.random() > 0.42 ? 1 : -1));
+                    const high = Math.max(open, close) * (1 + Math.random() * 0.06);
+                    const low = Math.min(open, close) * (1 - Math.random() * 0.06);
+                    pts.push({ x: i, o: parseFloat(open.toFixed(6)), h: parseFloat(high.toFixed(6)), l: parseFloat(low.toFixed(6)), c: parseFloat(close.toFixed(6)) });
+                    price = close;
+                }
+                return pts;
+            }
+
+            // Generate VeriRank trend line (smooth upward, mild noise)
+            function genVeriRank(n) {
+                const pts = [];
+                let vr = 0.85;
+                for (let i = 0; i <= n; i++) {
+                    const trend = (0.9174 - 0.85) / n;
+                    const noise = (Math.random() - 0.5) * 0.012;
+                    vr = Math.min(0.9999, Math.max(0.80, vr + trend + noise));
+                    pts.push({ x: i, y: parseFloat(vr.toFixed(4)), curve: 'verirank' });
+                }
+                return pts;
+            }
+
+            const N = 28;
+            state.trust = genOHLC(N, 0.00088);     // TOKEN K-line (OHLC)
+            state.stake = genVeriRank(N);           // VeriRank trend line
+            state.loaded = true;
+            state.isGraduated = true;
+            const initialCandle = state.trust[state.trust.length - 1];
+            const initialRank = state.stake[state.stake.length - 1]?.y;
+            syncGraduatedTokenMetrics(agentId, initialCandle, initialRank);
+
+            // Live update: append a new candle + update VeriRank every 2.2s
+            if (graduatedCurveTimer) clearInterval(graduatedCurveTimer);
+            graduatedCurveTimer = setInterval(() => {
+                if (!cardCurveChart || !state.isGraduated) return;
+                const last = state.trust[state.trust.length - 1];
+                const lastVr = state.stake[state.stake.length - 1];
+                if (!last || !lastVr) return;
+
+                // New candle
+                const trend = 0.00005;
+                const vol = last.c * (0.12 + Math.random() * 0.20);
+                const open = last.c;
+                const close = Math.max(0.0003, open + trend + vol * (Math.random() > 0.42 ? 1 : -1));
+                const high = Math.max(open, close) * (1 + Math.random() * 0.05);
+                const low = Math.min(open, close) * (1 - Math.random() * 0.05);
+                const newCandle = { x: last.x + 1, o: parseFloat(open.toFixed(6)), h: parseFloat(high.toFixed(6)), l: parseFloat(low.toFixed(6)), c: parseFloat(close.toFixed(6)) };
+                state.trust.push(newCandle);
+                if (state.trust.length > MAX_CURVE_POINTS) state.trust.shift();
+
+                // New VeriRank point
+                const newVrNoise = (Math.random() - 0.5) * 0.014;
+                const newVr = Math.min(0.9999, Math.max(0.80, lastVr.y + 0.001 + newVrNoise));
+                const newVrPt = { x: lastVr.x + 1, y: parseFloat(newVr.toFixed(4)), curve: 'verirank' };
+                state.stake.push(newVrPt);
+                if (state.stake.length > MAX_CURVE_POINTS) state.stake.shift();
+                syncGraduatedTokenMetrics(agentId, newCandle, newVrPt.y);
+
+                // Update chart data live
+                if (cardCurveChart.data.datasets[0]) {
+                    cardCurveChart.data.datasets[0].data = state.trust.slice(-MAX_CURVE_POINTS);
+                }
+                if (cardCurveChart.data.datasets[1]) {
+                    cardCurveChart.data.datasets[1].data = state.stake.slice(-MAX_CURVE_POINTS);
+                }
+                cardCurveChart.update('none');
+
+                // Update VeriRank display
+                const vrEl = document.getElementById('card-verirank-val');
+                if (vrEl) {
+                    const baseRank = 0.9174;
+                    const noise2 = (Math.random() - 0.5) * 0.04;
+                    vrEl.textContent = Math.min(0.9999, Math.max(0.80, baseRank + noise2)).toFixed(4);
+                }
+            }, 2200);
+        }
+
+        async function loadAgentCurves(agentId) {
+            const state = ensureCurveState(agentId);
+            if (state.loaded) return state;
+            if (state.loadingPromise) {
+                await state.loadingPromise;
+                return state;
+            }
+
+            // Graduated demo agent: inject mock TOKEN price + VeriRank curve
+            if (graduatedDemoAgents.has(Number(agentId))) {
+                injectGraduatedCurveMock(agentId, state);
+                return state;
+            }
+
+            state.loadingPromise = (async () => {
+                const [trustPoints, stakePoints] = await Promise.all([
+                    buildTrustCurve(agentId),
+                    buildStakeCurve(agentId)
+                ]);
+                state.trust = trustPoints;
+                state.stake = stakePoints;
+                state.loaded = true;
+                await flushPendingCurveEvents(agentId);
+            })();
+
+            try {
+                await state.loadingPromise;
+            } finally {
+                state.loadingPromise = null;
+            }
+            return state;
+        }
+
+        async function flushPendingCurveEvents(agentId) {
+            const state = ensureCurveState(agentId);
+            if (!state.loaded) return;
+
+            const trustQueue = Array.isArray(state.pendingTrust)
+                ? state.pendingTrust.splice(0, state.pendingTrust.length)
+                : [];
+
+            for (const item of trustQueue) {
+                await appendTrustCurvePoint(agentId, item?.score, item?.blockNumber);
+            }
+
+            const stakeQueue = Array.isArray(state.pendingStake)
+                ? state.pendingStake.splice(0, state.pendingStake.length)
+                : [];
+
+            for (const item of stakeQueue) {
+                if (item?.type === 'invested') {
+                    await appendStakeCurvePoint(agentId, item?.rawAmount, item?.blockNumber);
+                } else if (item?.type === 'settled') {
+                    await appendStakeSettlePoint(agentId, item?.blockNumber);
+                }
+            }
+        }
+
+        function updateCurveEmptyState(hasData) {
+            const emptyEl = document.getElementById('card-curve-empty');
+            if (!emptyEl) return;
+            emptyEl.style.display = hasData ? 'none' : 'flex';
+        }
+
+        function formatCurveSummary(datasetLabel, parsedPoint) {
+            const value = safeToNumber(parsedPoint?.y, 0);
+            if ((datasetLabel || '').toUpperCase() === 'STAKE') {
+                return `${datasetLabel}: ${value.toFixed(2)}`;
+            }
+            return `${datasetLabel}: ${Math.round(value)}`;
+        }
+
+        function getPublicCurveEventLabel(point) {
+            const raw = String(point?.eventType || '').toLowerCase();
+            if (raw.includes('snapshot')) return 'SYNC';
+            if (raw.includes('trust-updated')) return 'UPDATE';
+            if (raw.includes('invested')) return 'INVEST';
+            if (raw.includes('settled')) return 'SETTLE';
+            return 'EVENT';
+        }
+
+        function emitCurvePointDetail(agentId, datasetLabel, point, parsedPoint) {
+            const x = safeToNumber(parsedPoint?.x, safeToNumber(point?.x, 0));
+            const y = safeToNumber(parsedPoint?.y, safeToNumber(point?.y, 0));
+            const curveLabel = (datasetLabel || point?.curve || '--').toUpperCase();
+            const eventType = getPublicCurveEventLabel(point);
+            const blockNo = point?.blockNumber ?? '--';
+            const timestamp = point?.timestamp
+                ? new Date(point.timestamp * 1000).toLocaleString()
+                : '--';
+
+            const valueLabel = curveLabel === 'STAKE'
+                ? `${y.toFixed(2)} USDT`
+                : `${Math.round(y)}`;
+
+            const deltaLabel = curveLabel === 'STAKE'
+                ? ` | DELTA ${safeToNumber(point?.delta, 0).toFixed(2)} USDT`
+                : '';
+
+            terminal.typeLog(`curve.inspect --node #${agentId} --event E${x}`, 'text-neoncyan');
+            terminal.log(`[CURVE] ${curveLabel} E${x} => ${valueLabel} (${eventType})`, 'text-neonpurple');
+            terminal.log(`[DETAIL] BLK ${blockNo} | ${timestamp}${deltaLabel}`, 'text-gray-300');
+        }
+
+        function renderAgentCurves(agentId) {
+            const canvas = document.getElementById('card-curve-canvas');
+            if (!canvas) return;
+
+            const state = ensureCurveState(agentId);
+            const trustData = (state.trust || []).slice(-MAX_CURVE_POINTS);
+            const stakeData = (state.stake || []).slice(-MAX_CURVE_POINTS);
+            const hasData = trustData.length > 0 || stakeData.length > 0;
+            const isGraduated = !!state.isGraduated;
+
+            // Update curve mode label
+            const modeEl = document.getElementById('card-curve-mode');
+            const legendPrimaryEl = document.getElementById('card-legend-primary');
+            const legendSecondaryEl = document.getElementById('card-legend-secondary');
+            if (modeEl) modeEl.textContent = isGraduated ? 'TOKEN / PCEG' : 'LIVE';
+            if (legendPrimaryEl) {
+                legendPrimaryEl.textContent = isGraduated ? 'TOKEN' : 'TRUST';
+                legendPrimaryEl.className = `font-display text-[8px] ${isGraduated ? 'text-neon' : 'text-neoncyan'}`;
+            }
+            if (legendSecondaryEl) {
+                legendSecondaryEl.textContent = isGraduated ? 'VERIRANK' : 'STAKE';
+                legendSecondaryEl.className = 'font-display text-[8px] text-neonpurple';
+            }
+
+            if (!window.Chart) {
+                updateCurveEmptyState(false);
+                return;
+            }
+
+            if (cardCurveChart) {
+                cardCurveChart.destroy();
+                cardCurveChart = null;
+            }
+
+            if (!hasData) {
+                updateCurveEmptyState(false);
+                return;
+            }
+
+            const dataset1 = isGraduated ? {
+                label: 'TOKEN',
+                data: trustData,
+                parsing: false,
+                type: 'candlestick',
+                color: {
+                    up: '#00ff9d',
+                    down: '#ff4444',
+                    unchanged: '#888888'
+                },
+                borderColor: {
+                    up: '#00ff9d',
+                    down: '#ff4444',
+                    unchanged: '#888888'
+                },
+                yAxisID: 'yTrust'
+            } : {
+                label: 'TRUST',
+                data: trustData,
+                parsing: false,
+                borderColor: '#00f5ff',
+                backgroundColor: 'rgba(0, 245, 255, 0.12)',
+                borderWidth: 1.6,
+                pointRadius: 1.8,
+                pointHoverRadius: 3,
+                pointHitRadius: 10,
+                stepped: false,
+                tension: 0.24,
+                yAxisID: 'yTrust'
+            };
+
+            const dataset2 = isGraduated ? {
+                label: 'VERIRANK',
+                type: 'line',
+                data: stakeData,
+                parsing: false,
+                borderColor: '#bf00ff',
+                backgroundColor: 'rgba(191, 0, 255, 0.08)',
+                borderWidth: 1.4,
+                pointRadius: 1.5,
+                pointHoverRadius: 3,
+                pointHitRadius: 10,
+                stepped: false,
+                tension: 0.5,
+                yAxisID: 'yStake'
+            } : {
+                label: 'STAKE',
+                data: stakeData,
+                parsing: false,
+                borderColor: '#bf00ff',
+                backgroundColor: 'rgba(191, 0, 255, 0.10)',
+                borderWidth: 1.6,
+                pointRadius: 1.8,
+                pointHoverRadius: 3,
+                pointHitRadius: 10,
+                stepped: false,
+                tension: 0.24,
+                yAxisID: 'yStake'
+            };
+
+            const yTrustTick = isGraduated
+                ? (v) => `$${v.toFixed(4)}`
+                : (v) => `${Math.round(v)}`;
+            const yStakeTick = isGraduated
+                ? (v) => `${v.toFixed(2)}`
+                : (v) => `${v.toFixed(2)}`;
+
+            const ctx = canvas.getContext('2d');
+            cardCurveChart = new Chart(ctx, {
+                type: isGraduated ? 'candlestick' : 'line',
+                data: {
+                    datasets: [ dataset1, dataset2 ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    interaction: {
+                        mode: 'nearest',
+                        intersect: false
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => {
+                                    return formatCurveSummary(context.dataset.label, context.parsed);
+                                }
+                            }
+                        }
+                    },
+                    onClick: (_evt, activeElements, chart) => {
+                        if (!activeElements || activeElements.length === 0) return;
+
+                        const picked = activeElements[0];
+                        const dataset = chart?.data?.datasets?.[picked.datasetIndex];
+                        const point = dataset?.data?.[picked.index] || {};
+                        const parsed = {
+                            x: safeToNumber(point?.x, picked.index),
+                            y: safeToNumber(point?.y, 0)
+                        };
+
+                        emitCurvePointDetail(agentId, dataset?.label || '--', point, parsed);
+                    },
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            offset: false,
+                            ticks: {
+                                color: '#6b7280',
+                                stepSize: 1,
+                                maxRotation: 0,
+                                autoSkip: true,
+                                font: {
+                                    size: 8
+                                },
+                                callback: (value) => `E${value}`
+                            },
+                            grid: {
+                                color: 'rgba(107, 114, 128, 0.20)'
+                            }
+                        },
+                        yTrust: {
+                            type: 'linear',
+                            position: 'left',
+                            ticks: {
+                                color: isGraduated ? '#00ff9d' : '#00f5ff',
+                                font: {
+                                    size: 8
+                                },
+                                callback: yTrustTick
+                            },
+                            grid: {
+                                color: 'rgba(107, 114, 128, 0.18)'
+                            }
+                        },
+                        yStake: {
+                            type: 'linear',
+                            position: 'right',
+                            ticks: {
+                                color: '#bf00ff',
+                                font: {
+                                    size: 8
+                                },
+                                callback: yStakeTick
+                            },
+                            grid: {
+                                drawOnChartArea: false
+                            }
+                        }
+                    }
+                }
+            });
+
+            updateCurveEmptyState(true);
+        }
+
+        async function refreshSelectedCurve(agentId) {
+            if (selectedAgentId !== agentId) return;
+            await loadAgentCurves(agentId);
+            renderAgentCurves(agentId);
+        }
+
+        async function appendTrustCurvePoint(agentId, score, blockNumber) {
+            const state = ensureCurveState(agentId);
+            if (!state.loaded) {
+                if (shouldBufferCurveEvent(agentId, state)) {
+                    state.pendingTrust.push({
+                        score: safeToNumber(score, 0),
+                        blockNumber: safeToNumber(blockNumber, null)
+                    });
+                }
+                return;
+            }
+
+            const lastPoint = state.trust[state.trust.length - 1];
+            const lastY = lastPoint ? safeToNumber(lastPoint.y, 0) : null;
+            if (lastY !== null && lastY === safeToNumber(score, 0)) {
+                return;
+            }
+
+            const x = lastPoint ? safeToNumber(lastPoint.x, 0) + 1 : 0;
+            const ts = await getBlockTimestamp(blockNumber);
+            state.trust.push({
+                x,
+                y: safeToNumber(score, 0),
+                blockNumber: safeToNumber(blockNumber, null),
+                timestamp: ts,
+                eventType: 'trust-updated-live',
+                curve: 'trust'
+            });
+
+            if (selectedAgentId === agentId) {
+                renderAgentCurves(agentId);
+            }
+        }
+
+        async function appendStakeCurvePoint(agentId, rawAmount, blockNumber) {
+            const state = ensureCurveState(agentId);
+            if (!state.loaded) {
+                if (shouldBufferCurveEvent(agentId, state)) {
+                    state.pendingStake.push({
+                        type: 'invested',
+                        rawAmount,
+                        blockNumber: safeToNumber(blockNumber, null)
+                    });
+                }
+                return;
+            }
+
+            const lastPoint = state.stake[state.stake.length - 1];
+            const normalizedBlock = safeToNumber(blockNumber, null);
+            if (
+                lastPoint &&
+                normalizedBlock !== null &&
+                safeToNumber(lastPoint?.blockNumber, null) === normalizedBlock &&
+                lastPoint?.eventType === 'invested-live'
+            ) {
+                return;
+            }
+            const prev = lastPoint ? safeToNumber(lastPoint.y, 0) : 0;
+            const next = Number((prev + formatStakeUnits(rawAmount)).toFixed(6));
+            const x = lastPoint ? safeToNumber(lastPoint.x, 0) + 1 : 0;
+            const ts = await getBlockTimestamp(normalizedBlock);
+            const delta = Number(formatStakeUnits(rawAmount).toFixed(6));
+            state.stake.push({
+                x,
+                y: next,
+                blockNumber: normalizedBlock,
+                timestamp: ts,
+                eventType: 'invested-live',
+                curve: 'stake',
+                delta
+            });
+
+            if (selectedAgentId === agentId) {
+                renderAgentCurves(agentId);
+            }
+        }
+
+        async function appendStakeSettlePoint(agentId, blockNumber) {
+            const state = ensureCurveState(agentId);
+            if (!state.loaded) {
+                if (shouldBufferCurveEvent(agentId, state)) {
+                    state.pendingStake.push({
+                        type: 'settled',
+                        blockNumber: safeToNumber(blockNumber, null)
+                    });
+                }
+                return;
+            }
+
+            const lastPoint = state.stake[state.stake.length - 1];
+            const normalizedBlock = safeToNumber(blockNumber, null);
+            if (
+                lastPoint &&
+                normalizedBlock !== null &&
+                safeToNumber(lastPoint?.blockNumber, null) === normalizedBlock &&
+                lastPoint?.eventType === 'settled-live'
+            ) {
+                return;
+            }
+            const current = lastPoint ? safeToNumber(lastPoint.y, 0) : 0;
+            const x = lastPoint ? safeToNumber(lastPoint.x, 0) + 1 : 0;
+            const ts = await getBlockTimestamp(normalizedBlock);
+            state.stake.push({
+                x,
+                y: current,
+                blockNumber: normalizedBlock,
+                timestamp: ts,
+                eventType: 'settled-live',
+                curve: 'stake',
+                delta: 0
+            });
+
+            if (selectedAgentId === agentId) {
+                renderAgentCurves(agentId);
+            }
+        }
+
+        // Organic Centered Coordinate Generator
+        // Seeded pseudo-random (mulberry32) — deterministic, no Math.random
+        function seededRand(seed) {
+            return function() {
+                seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+                let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+                t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+                return ((t ^ t >>> 14) >>> 0) / 4294967296;
+            };
+        }
+
+        // Generate a full sorted candidate pool (deterministic, fixed seed)
+        function generateCandidatePool(minSize) {
+            const W = 58;
+            const H = 50;
+            const rand = seededRand(0xDEADBEEF);
+            let coords = [];
+            const radius = Math.ceil(Math.sqrt(minSize)) + 2;
+            for (let r = -radius; r <= radius; r++) {
+                for (let q = -radius; q <= radius; q++) {
+                    const x = q * W + (Math.abs(r) % 2 === 1 ? W/2 : 0);
+                    const y = r * H;
+                    const dist = Math.sqrt(x*x + y*y);
+                    coords.push({x, y, dist});
+                }
+            }
+            // Deterministic organic sort: distance + fixed noise
+            coords.sort((a, b) => (a.dist + rand() * 20) - (b.dist + rand() * 20));
+            return coords;
+        }
+
+        let _candidatePool = null;
+
+        function generateOrganicCoordinates(n) {
+            // Rebuild pool if too small
+            if (!_candidatePool || _candidatePool.length < n) {
+                _candidatePool = generateCandidatePool(n);
+            }
+            return _candidatePool.slice(0, n);
+        }
+
+        // Append exactly one new coordinate for a newly arrived node (stable, no overlap)
+        function appendOneCoordinate() {
+            const n = coordsCache.length + 1;
+            if (!_candidatePool || _candidatePool.length < n) {
+                _candidatePool = generateCandidatePool(n);
+            }
+            coordsCache.push(_candidatePool[n - 1]);
+            return coordsCache[coordsCache.length - 1];
+        }
+
+        async function fetchAgents() {
+            try {
+                initDragAndDrop();
+                initCardPanelInteractions();
+                bindDemoPageHotkeys();
+                const bootFlowStartAt = Date.now();
+                
+                readProvider = new ethers.JsonRpcProvider(HTTP_RPC_URL);
+                readContract = new ethers.Contract(CONTRACT_ADDRESS, ABI, readProvider);
+                readEscrowContract = new ethers.Contract(ESCROW_CONTRACT_ADDRESS, ESCROW_ABI, readProvider);
+                liveProvider = null;
+                liveContract = null;
+                liveEscrowContract = null;
+                usingWsRealtime = false;
+                
+                const nextIdBN = await readContract.nextAgentId();
+                const totalAgents = Math.max(0, Number(nextIdBN) - 1);
+                lastAgentId = totalAgents;
+                
+                // Clear loading
+                const mapEl = document.getElementById('hex-map');
+                mapEl.innerHTML = '';
+                
+                terminal.log(`[SYS] Mapping ${totalAgents} nodes...`, "text-neoncyan");
+
+                if (totalAgents === 0) {
+                    mapEl.innerHTML = '<div class="absolute text-gray-500 font-sans text-[10px] w-[200px] text-center -ml-[100px] -mt-[10px]">No Data Pulses Detected</div>';
+                    terminal.log('[ERR] No Data Pulses Detected', "text-red-500");
+                    await bootstrapDemoStateRuntime();
+                    startDemoStateWatcher();
+                    startRadar(); // Even if 0, wait for new pulses
+                    return;
+                }
+
+                // Fetch all agent data sequentially to avoid RPC rate limiting on public endpoints
+                const agentPromises = [];
+                for (let i = 1; i <= totalAgents; i++) {
+                    try {
+                        const a = await readContract.getAgent(i);
+                        const normalizedAgent = normalizeAgentData(a);
+                        agentPromises.push({ id: i, data: normalizedAgent });
+                        existingAgentsMap.set(i, normalizedAgent);
+                    } catch (e) {
+                        console.error('Failed ID', i, e);
+                    }
+                }
+
+                rawAgents = agentPromises;
+                
+                // Shuffle array to scatter high scores organically
+                rawAgents.sort(() => Math.random() - 0.5);
+                coordsCache = generateOrganicCoordinates(rawAgents.length);
+
+                if (totalAgents >= 1) {
+                    const elapsed = Date.now() - bootFlowStartAt;
+                    const holdForIntro = Math.max(0, BOOT_HOLD_MIN_MS - elapsed);
+                    if (holdForIntro > 0) {
+                        await new Promise(r => setTimeout(r, holdForIntro));
+                    }
+                    triggerBootAnimation();
+                    await new Promise(r => setTimeout(r, BOOT_TO_FIRST_HEX_MS));
+                }
+                
+                // Render them onto the map
+                for (let idx = 0; idx < rawAgents.length; idx++) {
+                    try {
+                        renderHexagon(rawAgents[idx], coordsCache[idx], mapEl);
+                    } catch (e) {
+                        console.error(`Render fail #${rawAgents[idx].id}`, e);
+                    }
+                }
+                
+                // Find the max animation delay
+                let maxDelay = 0;
+                coordsCache.forEach(c => {
+                    const delay = c.dist * HEX_ENTRANCE_DISTANCE_FACTOR + HEX_ENTRANCE_BASE_DELAY_MS;
+                    if(delay > maxDelay) maxDelay = delay;
+                });
+                
+                setTimeout(async () => {
+                    await bootstrapDemoStateRuntime();
+                    startDemoStateWatcher();
+                    terminal.log("[OK] MAP INITIALIZED", "text-neon");
+                    terminal.typeLog("", "text-neoncyan"); // Empty prompt blinking
+                    startRadar();
+                }, maxDelay + 500);
+
+            } catch (err) {
+                console.error(err);
+                terminal.log("[ERR] SENSOR FAIL", "text-red-500");
+            }
+        }
+
+        // B0: Onboarding Pipeline Animation
+        function runOnboardingAnimation() {
+            return new Promise(resolve => {
+                const overlay = document.getElementById('onboarding-anim');
+                if (!overlay) { resolve(); return; }
+
+                // Dark backdrop: cover main area below arena-shell
+                const mainEl = document.querySelector('main');
+                mainEl.style.background = 'rgba(0,0,0,0.9)';
+
+                const termLines = document.getElementById('ob-term-lines');
+                const skipBtn = document.getElementById('ob-skip');
+                const ctaBtn = document.getElementById('ob-cta');
+                let cancelled = false;
+
+                // 8-bit sound engine (Web Audio)
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                function playBeep(freq, duration, type) {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = type || 'square';
+                    osc.frequency.value = freq;
+                    gain.gain.value = 0.08;
+                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + duration);
+                }
+                function sfxNodeActivate() { playBeep(440, 0.08, 'square'); setTimeout(() => playBeep(660, 0.08, 'square'), 80); }
+                function sfxType() { playBeep(1200, 0.03, 'square'); }
+                function sfxLineComplete() { playBeep(523, 0.06, 'triangle'); setTimeout(() => playBeep(784, 0.1, 'triangle'), 60); }
+                function sfxFinal() { [523,659,784,1047].forEach((f,i) => setTimeout(() => playBeep(f, 0.12, 'square'), i*100)); }
+
+                // === Curve Stream (Canvas) — Left-scroll real-time chart ===
+                const cvs = document.getElementById('ob-canvas');
+                const ctx = cvs ? cvs.getContext('2d') : null;
+                const CW = 520, CH = 150;
+                const PAD_L = 24, PAD_R = 6, PAD_T = 8, PAD_B = 12;
+                const plotW = CW - PAD_L - PAD_R;
+                const plotH = CH - PAD_T - PAD_B;
+                const MAX_TRUST = 125;
+                const THRESHOLD = 100;
+                const STEP_PX = 3;          // px between curve points
+                const POINT_MS = 80;        // ms between new points
+                const CANDLE_W = 8;
+                const CANDLE_GAP = 2;
+                const CANDLE_STEP = CANDLE_W + CANDLE_GAP;
+                const CANDLE_MS = 600;
+
+                // Streaming state
+                let tPts = [];              // {ax, val} — absolute x, trust 0-125
+                let iPts = [];              // {ax, val} — absolute x, invest 0-1
+                let candleArr = [];         // {ax, o,h,l,c, bull}
+                let curAbsX = 0;
+                let curTrust = 0;
+                let curInvest = -1;         // -1 = hidden
+                let targetTrust = 0;
+                let targetInvest = -1;
+                let inCandleMode = false;
+                let pointTimer = null;
+                let candleTimer = null;
+                let pcegTickerInterval = null;
+                let curveAnimFrame = null;
+
+                // Map value → canvas Y
+                function trustY(v) { return PAD_T + plotH * (1 - v / MAX_TRUST); }
+                function investY(v) {
+                    // invest occupies bottom 40% of plot
+                    const base = PAD_T + plotH * 0.55;
+                    const range = plotH * 0.38;
+                    return base + range * (1 - v);
+                }
+                // Candles use FULL chart height for visual impact
+                function candleY(v) {
+                    return PAD_T + plotH * (1 - v);
+                }
+
+                // Stage targets
+                const stageTgt = {
+                    1: { t: 15,  i: -1 },
+                    2: { t: 87,  i: -1 },
+                    3: { t: 95,  i: 0.4 },
+                    4: { t: 103, i: 0.55 },
+                    5: { t: 103, i: -1 },   // invest → candles
+                };
+
+                function setStageTarget(n) {
+                    const s = stageTgt[n];
+                    if (!s) return;
+                    targetTrust = s.t;
+                    targetInvest = s.i;
+                    if (n >= 3 && curInvest < 0) curInvest = 0.08;
+                    if (n === 5) {
+                        inCandleMode = true;
+                        stopPointStream();
+                        startCandleStream();
+                    }
+                }
+
+                // ---- Point streaming (trust + invest lines) ----
+                function addPoint() {
+                    const ease = 0.07;
+                    const noise = (Math.random() - 0.5) * 2;
+                    curTrust = Math.max(0, curTrust + (targetTrust - curTrust) * ease + noise);
+                    tPts.push({ ax: curAbsX, val: curTrust });
+
+                    if (curInvest >= 0 && !inCandleMode) {
+                        const iNoise = (Math.random() - 0.5) * 0.02;
+                        curInvest = Math.max(0, Math.min(1, curInvest + (targetInvest - curInvest) * 0.05 + iNoise));
+                        iPts.push({ ax: curAbsX, val: curInvest });
+                    }
+                    curAbsX += STEP_PX;
+                }
+                function startPointStream() {
+                    if (pointTimer) return;
+                    pointTimer = setInterval(addPoint, POINT_MS);
+                }
+                function stopPointStream() {
+                    if (pointTimer) { clearInterval(pointTimer); pointTimer = null; }
+                }
+
+                // ---- Candle streaming ----
+                let candleLastC = 0.55;
+                function addCandle() {
+                    const o = candleLastC;
+                    const delta = (Math.random() - 0.38) * 0.18; // big swings, 62% bullish
+                    const c = o + delta; // unconstrained — dynCY auto-scales
+                    const h = Math.max(o, c) + Math.random() * 0.08;
+                    const l = Math.min(o, c) - Math.random() * 0.08;
+                    candleArr.push({ ax: curAbsX, o, h, l, c, bull: c >= o });
+                    candleLastC = c;
+                    // keep trust line going gently
+                    curTrust += (Math.random() - 0.5) * 0.5;
+                    tPts.push({ ax: curAbsX, val: curTrust });
+                    curAbsX += CANDLE_STEP;
+                }
+                function startCandleStream() {
+                    if (candleTimer) return;
+                    candleLastC = curInvest > 0 ? curInvest : 0.55;
+                    for (let i = 0; i < 3; i++) addCandle();
+                    candleTimer = setInterval(addCandle, CANDLE_MS);
+                }
+
+                function stopAllStreams() {
+                    if (pointTimer) { clearInterval(pointTimer); pointTimer = null; }
+                    if (candleTimer) { clearInterval(candleTimer); candleTimer = null; }
+                    if (curveAnimFrame) { cancelAnimationFrame(curveAnimFrame); curveAnimFrame = null; }
+                    if (pcegTickerInterval) { clearInterval(pcegTickerInterval); pcegTickerInterval = null; }
+                }
+
+                // ---- Render ----
+                function renderFrame() {
+                    curveAnimFrame = requestAnimationFrame(renderFrame);
+                    if (!ctx) return;
+                    ctx.clearRect(0, 0, CW, CH);
+
+                    // Viewport: most-recent data at right edge
+                    const viewR = curAbsX;
+                    const viewL = Math.max(0, viewR - plotW);
+                    const sx = (ax) => PAD_L + (ax - viewL);
+
+                    // Visible candles (compute dynamic Y range)
+                    const vC = candleArr.filter(c => c.ax >= viewL - CANDLE_STEP && c.ax <= viewR);
+                    let cYmin = 0, cYmax = 1;
+                    if (vC.length > 0) {
+                        cYmin = Math.min(...vC.map(c => c.l));
+                        cYmax = Math.max(...vC.map(c => c.h));
+                        const pad = (cYmax - cYmin) * 0.12 || 0.05;
+                        cYmin -= pad; cYmax += pad;
+                    }
+                    // Dynamic candle Y that auto-scales to visible range
+                    const dynCY = (v) => PAD_T + plotH * (1 - (v - cYmin) / (cYmax - cYmin || 1));
+
+                    // Grid
+                    ctx.strokeStyle = 'rgba(191,0,255,0.06)';
+                    ctx.lineWidth = 0.5;
+                    for (let i = 0; i <= 4; i++) {
+                        const y = PAD_T + (plotH / 4) * i;
+                        ctx.beginPath(); ctx.moveTo(PAD_L, y); ctx.lineTo(CW - PAD_R, y); ctx.stroke();
+                    }
+
+                    // Threshold dashed line (100)
+                    const thY = trustY(THRESHOLD);
+                    ctx.setLineDash([4, 3]);
+                    ctx.strokeStyle = 'rgba(239,68,68,0.6)';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath(); ctx.moveTo(PAD_L, thY); ctx.lineTo(CW - PAD_R, thY); ctx.stroke();
+                    ctx.setLineDash([]);
+                    ctx.font = '7px monospace';
+                    ctx.fillStyle = 'rgba(239,68,68,0.5)';
+                    ctx.fillText('100', 2, thY + 3);
+
+                    // Trust curve (purple)
+                    const vT = tPts.filter(p => p.ax >= viewL - STEP_PX && p.ax <= viewR);
+                    if (vT.length > 1) {
+                        ctx.strokeStyle = '#bf00ff';
+                        ctx.lineWidth = 1.5;
+                        ctx.shadowColor = '#bf00ff'; ctx.shadowBlur = 5;
+                        ctx.beginPath();
+                        vT.forEach((p, i) => {
+                            const x = sx(p.ax), y = trustY(p.val);
+                            i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+                        });
+                        ctx.stroke();
+                        ctx.shadowBlur = 0;
+                        // Green flash when crossing 100
+                        const last = vT[vT.length - 1];
+                        if (last.val >= THRESHOLD && vT.length > 5 && vT[vT.length - 6].val < THRESHOLD) {
+                            ctx.fillStyle = 'rgba(0,255,157,0.12)';
+                            ctx.fillRect(PAD_L, PAD_T, plotW, plotH);
+                        }
+                    }
+
+                    // Investment curve (cyan)
+                    const vI = iPts.filter(p => p.ax >= viewL - STEP_PX && p.ax <= viewR);
+                    if (vI.length > 1) {
+                        ctx.strokeStyle = '#00f5ff';
+                        ctx.lineWidth = 1.2;
+                        ctx.shadowColor = '#00f5ff'; ctx.shadowBlur = 3;
+                        ctx.beginPath();
+                        vI.forEach((p, i) => {
+                            const x = sx(p.ax), y = investY(p.val);
+                            i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+                        });
+                        ctx.stroke();
+                        ctx.shadowBlur = 0;
+                    }
+
+                    // K-line candles (dynamic Y-axis, full height)
+                    for (const c of vC) {
+                        const x = sx(c.ax);
+                        const col = c.bull ? '#00ff9d' : '#ef4444';
+                        ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = 1;
+                        const wickX = x + CANDLE_W / 2;
+                        ctx.beginPath(); ctx.moveTo(wickX, dynCY(c.h)); ctx.lineTo(wickX, dynCY(c.l)); ctx.stroke();
+                        const bTop = dynCY(Math.max(c.o, c.c));
+                        const bBot = dynCY(Math.min(c.o, c.c));
+                        const bH = Math.max(2, bBot - bTop);
+                        c.bull ? ctx.fillRect(x, bTop, CANDLE_W, bH) : ctx.strokeRect(x, bTop, CANDLE_W, bH);
+                    }
+
+                    // ---- HTML Legend updates ----
+                    const legInvest = document.getElementById('ob-leg-invest');
+                    const legAgent = document.getElementById('ob-leg-agent');
+                    if (iPts.length > 0 && legInvest) legInvest.classList.remove('hidden');
+                    if (inCandleMode && legAgent) legAgent.classList.remove('hidden');
+                    // Price label on rightmost candle
+                    if (vC.length > 0) {
+                        const lastP = vC[vC.length - 1].c;
+                        ctx.font = '9px monospace';
+                        ctx.fillStyle = 'rgba(0,255,157,0.8)';
+                        ctx.fillText(lastP.toFixed(3), CW - PAD_R - 40, dynCY(lastP) - 4);
+                    }
+                }
+
+                // Start render loop (data streams started from runSequence)
+                if (ctx) renderFrame();
+
+                const stages = [
+                    { node: 1, line: null, text: '> AI Agent entering VeriVerse... ', highlight: 'DEPLOYED ✓', color: 'text-neonpurple' },
+                    { node: 2, line: 1, text: '> AI challenges verified (zkTLS + TEE) ', highlight: 'TRUST +87 ✓', color: 'text-neonpurple' },
+                    { node: 3, line: 2, text: '> high trust AI → BACKERs invest ', highlight: 'FUNDED ✓', color: 'text-neoncyan' },
+                    { node: 4, line: 3, text: '> AI graduated! 103 ≥ 100 ', highlight: 'REAL MARKET ✓', color: 'text-neon' },
+                    { node: 5, line: 4, text: '> $AI_AGENT on four.meme ', highlight: 'FLYWHEEL ∞', color: 'text-neon', final: true },
+                    { node: 6, line: 5, text: '> AI earning revenue — VeriRank: ', highlight: '0.9174 · GlobalRank #3', color: 'text-[#f59e0b]', earn: true },
+                ];
+
+                function skipAll() {
+                    cancelled = true;
+                    stopAllStreams();
+                    dismiss();
+                }
+                skipBtn.addEventListener('click', skipAll);
+
+                function dismiss() {
+                    overlay.style.transition = 'opacity 0.5s ease';
+                    overlay.style.opacity = '0';
+                    mainEl.style.background = '';
+                    setTimeout(() => {
+                        overlay.style.display = 'none';
+                        resolve();
+                    }, 500);
+                }
+
+                function activateNode(idx) {
+                    const node = document.getElementById('ob-node-' + idx);
+                    if (!node) return;
+                    // Mark previous as done
+                    for (let i = 1; i < idx; i++) {
+                        const prev = document.getElementById('ob-node-' + i);
+                        if (prev) { prev.classList.remove('active'); prev.classList.add('done'); }
+                        // Also update label color
+                        const label = prev?.parentElement?.querySelector('.ob-label');
+                        if (label) label.style.color = '#00ff9d';
+                    }
+                    node.classList.add(stages[idx-1].final ? 'final' : 'active');
+                    // Update label + earn icon blink
+                    const label = node.parentElement?.querySelector('.ob-label');
+                    if (label) {
+                        if (stages[idx-1].earn) label.style.color = '#f59e0b';
+                        else label.style.color = stages[idx-1].final ? '#00ff9d' : '#bf00ff';
+                    }
+                    if (stages[idx-1].earn) {
+                        const earnIcon = document.getElementById('ob-earn-icon');
+                        if (earnIcon) earnIcon.classList.add('earn-active');
+                    }
+                }
+
+                function drawLine(idx) {
+                    const line = document.getElementById('ob-line-' + idx);
+                    if (!line) return;
+                    if (idx === 4) {
+                        line.style.background = '#00ff9d'; // last VeriVerse line is green
+                    } else if (idx === 5) {
+                        line.style.background = '#f59e0b'; // EARN line is amber
+                    }
+                    line.style.transform = 'scaleX(1)';
+                }
+
+                function typeText(text, highlightText, colorClass) {
+                    return new Promise(res => {
+                        const lineEl = document.createElement('div');
+                        lineEl.className = 'whitespace-nowrap';
+                        termLines.appendChild(lineEl);
+                        const termBox = document.getElementById('ob-terminal');
+                        termBox.scrollTop = termBox.scrollHeight;
+                        let i = 0;
+                        const cursor = document.createElement('span');
+                        cursor.className = 'ob-cursor';
+                        lineEl.appendChild(cursor);
+
+                        function tick() {
+                            if (cancelled) { lineEl.textContent = text + highlightText; res(); return; }
+                            termBox.scrollTop = termBox.scrollHeight;
+                            if (i < text.length) {
+                                cursor.remove();
+                                const span = document.createTextNode(text[i]);
+                                lineEl.appendChild(span);
+                                lineEl.appendChild(cursor);
+                                i++;
+                                if (text[i-1] !== ' ') sfxType();
+                                setTimeout(tick, 25);
+                            } else {
+                                cursor.remove();
+                                // Highlight part
+                                const hl = document.createElement('span');
+                                hl.className = colorClass || 'text-neon';
+                                hl.textContent = highlightText;
+                                lineEl.appendChild(hl);
+                                termBox.scrollTop = termBox.scrollHeight;
+                                sfxLineComplete();
+                                res();
+                            }
+                        }
+                        tick();
+                    });
+                }
+
+                async function runSequence() {
+                    // Start point streaming — data flows continuously
+                    startPointStream();
+                    for (let s = 0; s < stages.length; s++) {
+                        if (cancelled) break;
+                        const stage = stages[s];
+                        // Set target values — streaming eases toward them
+                        setStageTarget(stage.node);
+                        // Draw connecting line (before this node)
+                        if (stage.line) drawLine(stage.line);
+                        await new Promise(r => setTimeout(r, cancelled ? 0 : 500));
+                        // Activate node
+                        activateNode(stage.node);
+                        sfxNodeActivate();
+                        await new Promise(r => setTimeout(r, cancelled ? 0 : 350));
+                        // Type terminal line
+                        await typeText(stage.text, stage.highlight, stage.color);
+                        // Start PCEG live ticker only when EARN stage activates
+                        if (stage.earn) {
+                            let vrVal = 0.8500; let grVal = 9;
+                            pcegTickerInterval = setInterval(() => {
+                                if (cancelled) return;
+                                vrVal = Math.min(0.9174, vrVal + (Math.random() * 0.0006 + 0.0001));
+                                if (Math.random() > 0.6 && grVal > 3) grVal--;
+                                const lineEl2 = document.createElement('div');
+                                lineEl2.className = 'whitespace-nowrap';
+                                lineEl2.innerHTML = '<span style="color:#f59e0b">&gt; AI earning revenue — VeriRank: ' + vrVal.toFixed(4) + ' · GlobalRank #' + grVal + '</span>';
+                                termLines.appendChild(lineEl2);
+                                const termBox2 = document.getElementById('ob-terminal');
+                                while (termLines.children.length > 8) termLines.removeChild(termLines.firstChild);
+                                termBox2.scrollTop = termBox2.scrollHeight;
+                            }, 1600);
+                        }
+                        await new Promise(r => {
+                            ctaBtn.addEventListener('click', r, { once: true });
+                            overlay.addEventListener('click', r, { once: true });
+                        });
+                    }
+                    stopAllStreams();
+                    dismiss();
+                }
+
+                runSequence();
+            });
+        }
+
+        // B1 Splash → then boot
+        window.addEventListener('load', async () => {
+            // B1: 4-Panel carousel FIRST
+            const whyEl = document.getElementById('why-veriverse');
+            const wvCta = document.getElementById('wv-cta');
+            if (whyEl && wvCta) {
+                const panels = document.querySelectorAll('.wv-panel');
+                const dots = document.querySelectorAll('.wv-dot');
+                let curPanel = 0;
+
+                function showPanel(idx) {
+                    panels.forEach((p, i) => {
+                        p.style.opacity = i === idx ? '1' : '0';
+                        p.style.pointerEvents = i === idx ? 'auto' : 'none';
+                    });
+                    dots.forEach((d, i) => {
+                        d.className = d.className.replace(/bg-\S+/g, '');
+                        d.classList.add(i === idx ? 'bg-neonpurple' : 'bg-gray-700');
+                    });
+                    curPanel = idx;
+                    if (idx === panels.length - 1) {
+                        wvCta.classList.remove('opacity-0', 'pointer-events-none');
+                    }
+                }
+
+                // Click anywhere on card area to advance
+                const cardEl = whyEl.querySelector('.wv-card');
+                if (cardEl) {
+                    cardEl.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        if (e.target.closest('.wv-dot') || e.target.closest('#wv-cta')) return;
+                        if (curPanel < panels.length - 1) showPanel(curPanel + 1);
+                    });
+                }
+
+                // Dot click navigation
+                dots.forEach(d => {
+                    d.addEventListener('click', () => {
+                        const idx = parseInt(d.dataset.idx);
+                        showPanel(idx);
+                    });
+                });
+
+                // Wait for CTA click to dismiss
+                await new Promise(resolve => {
+                    function dismiss() {
+                        whyEl.removeEventListener('click', onWhyClick);
+                        whyEl.style.transform = 'translateY(100%)';
+                        whyEl.style.opacity = '0';
+                        whyEl.style.pointerEvents = 'none';
+                        setTimeout(resolve, 900);
+                    }
+                    function onWhyClick(e) {
+                        if (curPanel === panels.length - 1) dismiss();
+                    }
+                    wvCta.addEventListener('click', dismiss);
+                    whyEl.addEventListener('click', onWhyClick);
+                });
+            }
+
+            // Phase 2: Expand header title
+            const titleEl = document.getElementById('main-title');
+            if (titleEl) {
+                titleEl.style.maxHeight = '500px';
+                titleEl.style.opacity = '1';
+            }
+
+            // Phase 2: Onboarding animation (canvas + pipeline + terminal)
+            const animEl = document.getElementById('onboarding-anim');
+            if (animEl) animEl.classList.remove('hidden');
+            await runOnboardingAnimation();
+
+            // Phase 2 done: expand sys-log terminal
+            const logEl = document.getElementById('sys-log-container');
+            if (logEl) {
+                logEl.style.maxHeight = '80px';
+                logEl.style.paddingTop = '';
+                logEl.style.paddingBottom = '';
+                logEl.style.marginTop = '';
+                logEl.style.opacity = '1';
+                logEl.style.borderWidth = '';
+            }
+
+            fetchAgents();
+        });
+
+        function getStatusLabel(statusRaw) {
+            const status = Number(statusRaw);
+            if (status === 0) return "ACTIVE";
+            if (status === 1) return "GRADUATED";
+            if (status === 2) return "DEACTIVATED";
+            return `UNKNOWN(${status})`;
+        }
+
+        function shortWallet(address) {
+            if (!address || address.length < 12) return address || '--';
+            return `${address.slice(0, 8)}...${address.slice(-6)}`;
+        }
+
+        function openAgentCardPanel() {
+            const shell = document.getElementById('arena-shell');
+            if (shell) shell.classList.add('focused');
+            startCardSyncClock();
+        }
+
+        function closeAgentCardPanel() {
+            const shell = document.getElementById('arena-shell');
+            if (shell) shell.classList.remove('focused');
+            selectedAgentId = null;
+            stopCardSyncClock();
+        }
+
+        function updateCardSyncLabel() {
+            const timeEl = document.getElementById('card-sync-time');
+            const blockEl = document.getElementById('card-sync-block');
+            if (!timeEl && !blockEl) return;
+            const t = new Date().toLocaleTimeString();
+            if (timeEl) timeEl.textContent = `SYNC ${t}`;
+            if (blockEl) blockEl.textContent = `BLK ${latestBlockNumber}`;
+        }
+
+        function startCardSyncClock() {
+            updateCardSyncLabel();
+            if (cardClockTimer) return;
+            cardClockTimer = setInterval(updateCardSyncLabel, 1000);
+        }
+
+        function stopCardSyncClock() {
+            if (!cardClockTimer) return;
+            clearInterval(cardClockTimer);
+            cardClockTimer = null;
+        }
+
+        function initCardPanelInteractions() {
+            if (cardUiInitialized) return;
+            cardUiInitialized = true;
+
+            const copyBtn = document.getElementById('copy-wallet-btn');
+            const mapPane = document.getElementById('map-pane');
+            const hexMap = document.getElementById('hex-map');
+
+            if (copyBtn) {
+                copyBtn.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    const walletEl = document.getElementById('card-wallet');
+                    const full = walletEl?.dataset?.fullAddress || '';
+                    if (!full) return;
+                    try {
+                        await navigator.clipboard.writeText(full);
+                        terminal.log('[OK] WALLET COPIED', 'text-neoncyan');
+                    } catch (_) {
+                        terminal.log('[WARN] COPY FAILED', 'text-yellow-400');
+                    }
+                });
+            }
+
+            [mapPane, hexMap].forEach((el) => {
+                if (!el) return;
+                el.addEventListener('click', () => {
+                    closeAgentCardPanel();
+                });
+            });
+
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') closeAgentCardPanel();
+            });
+        }
+
+        function getAvatarSeed(address) {
+            const normalized = (address || 'unknown').toLowerCase();
+            const salted = `veriverse-avatar:${normalized}`;
+            return ethers.keccak256(ethers.toUtf8Bytes(salted)).slice(2, 18);
+        }
+
+        async function getDicebearModules() {
+            if (!avatarModulePromise) {
+                avatarModulePromise = Promise.all([
+                    import('https://esm.sh/@dicebear/core@9.4.2'),
+                    import('https://esm.sh/@dicebear/pixel-art@9.4.2')
+                ]);
+            }
+            return avatarModulePromise;
+        }
+
+        function svgToDataUrl(svg) {
+            return `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svg)))}`;
+        }
+
+        async function getPixelAvatarDataUrl(address) {
+            const key = (address || 'unknown').toLowerCase();
+            if (avatarDataUrlCache.has(key)) {
+                return avatarDataUrlCache.get(key);
+            }
+
+            const seed = getAvatarSeed(key);
+
+            try {
+                const [coreMod, pixelArtMod] = await getDicebearModules();
+                const createAvatar = coreMod.createAvatar;
+                const pixelArtStyle = pixelArtMod.pixelArt || pixelArtMod.default || pixelArtMod;
+
+                const avatar = createAvatar(pixelArtStyle, {
+                    seed,
+                    size: 120,
+                    backgroundColor: ['0a0a0a']
+                });
+
+                const dataUrl = svgToDataUrl(avatar.toString());
+                avatarDataUrlCache.set(key, dataUrl);
+                return dataUrl;
+            } catch (error) {
+                console.warn('DiceBear import failed, fallback to hosted avatar', error);
+                const fallback = `https://api.dicebear.com/9.x/pixel-art/svg?seed=${seed}&backgroundColor=0a0a0a`;
+                avatarDataUrlCache.set(key, fallback);
+                return fallback;
+            }
+        }
+
+        async function renderPixelAvatar(address) {
+            const avatarEl = document.getElementById('card-avatar');
+            if (!avatarEl) return;
+
+            avatarEl.style.opacity = '0.55';
+            const dataUrl = await getPixelAvatarDataUrl(address);
+            avatarEl.src = dataUrl;
+            avatarEl.style.opacity = '1';
+        }
+
+        function renderAgentHud(agentId, agentData) {
+            if (!agentData) return;
+
+            const score = Number(agentData.trustScore);
+            const style = getTierStyle(score, agentData.status);
+            const statusLabel = getStatusLabel(agentData.status);
+
+            const nodeEl = document.getElementById('card-node-id');
+            const tierEl = document.getElementById('card-tier');
+            const statusEl = document.getElementById('card-status');
+            const nameEl = document.getElementById('card-agent-name');
+            const trustEl = document.getElementById('card-trust');
+            const walletEl = document.getElementById('card-wallet');
+            const modeEl = document.getElementById('card-curve-mode');
+            const curveModeLabel = getCurveMockForAgent(agentId) ? 'LIVE' : 'LIVE';
+
+            if (nodeEl) nodeEl.textContent = `NODE #${agentId}`;
+
+            if (tierEl) {
+                tierEl.textContent = `TIER ${style.name}`;
+                tierEl.className = `font-display text-[8px] px-1 border border-gray-600 ${style.text}`;
+            }
+
+            if (statusEl) {
+                statusEl.textContent = `STATUS ${statusLabel}`;
+                statusEl.className = 'font-display text-[8px] px-1 border border-gray-700 text-gray-300';
+            }
+
+            if (nameEl) nameEl.textContent = agentData.name || 'Unnamed Agent';
+
+            if (trustEl) {
+                trustEl.textContent = `${score}`;
+                trustEl.className = `mt-1 font-display text-sm sm:text-base ${style.text}`;
+            }
+
+            // PCEG display for graduated agents
+            const trustBlock = document.getElementById('card-trust-block');
+            const pcegBlock = document.getElementById('card-pceg-block');
+            const veriRankEl = document.getElementById('card-verirank-val');
+            const globalRankEl = document.getElementById('card-global-rank');
+            if (Number(agentData.status) === 1 && demoVirtualTokens.get(Number(agentId))) {
+                if (trustBlock) trustBlock.classList.add('hidden');
+                if (pcegBlock) pcegBlock.classList.remove('hidden');
+                const baseRank = 0.9174;
+                const noise = (Math.random() - 0.5) * 0.04;
+                const liveRank = Math.min(0.9999, Math.max(0.80, baseRank + noise));
+                if (veriRankEl) veriRankEl.textContent = liveRank.toFixed(4);
+                if (globalRankEl) globalRankEl.textContent = '#3 / 24';
+                // Mark as graduated + reset curve state for re-injection if needed
+                if (!graduatedDemoAgents.has(agentId)) {
+                    graduatedDemoAgents.add(agentId);
+                    const cs = ensureCurveState(agentId);
+                    cs.loaded = false;
+                    cs.isGraduated = false;
+                }
+            } else {
+                if (trustBlock) trustBlock.classList.remove('hidden');
+                if (pcegBlock) pcegBlock.classList.add('hidden');
+            }
+
+            if (walletEl) {
+                walletEl.textContent = shortWallet(agentData.wallet);
+                walletEl.dataset.fullAddress = agentData.wallet || '';
+                walletEl.title = agentData.wallet || '';
+            }
+
+            if (modeEl) {
+                modeEl.textContent = curveModeLabel;
+            }
+
+            openAgentCardPanel();
+            updateCardSyncLabel();
+            renderPixelAvatar(agentData.wallet);
+            updateCurveEmptyState(false);
+            loadAgentCurves(agentId)
+                .then(() => {
+                    if (modeEl) modeEl.textContent = curveModeLabel;
+                    renderAgentCurves(agentId);
+                })
+                .catch((error) => {
+                    console.warn(`Curve load failed for agent #${agentId}`, error);
+                    if (modeEl) {
+                        modeEl.textContent = curveModeLabel;
+                    }
+                    updateCurveEmptyState(false);
+                });
+
+            // Graduate Zone: check token data if graduated
+            updateGraduateZone(agentId, agentData.status);
+        }
+
+        const ZERO_ADDR = '0x0000000000000000000000000000000000000000';
+
+        async function updateGraduateZone(agentId, status) {
+            const gz = document.getElementById('graduate-zone');
+            if (!gz) return;
+
+            // Only show for graduated agents (status === 1)
+            if (Number(status) !== 1) {
+                gz.classList.add('hidden');
+                return;
+            }
+
+            // --- Demo mock: bypass chain call if this agent has a pre-built token entry ---
+            const demoToken = demoVirtualTokens.get(Number(agentId));
+            if (demoToken) {
+                const tokenCA = demoToken.tokenCA;
+                gz.classList.remove('hidden');
+                const symEl = document.getElementById('gz-symbol');
+                const mcapEl = document.getElementById('gz-mcap');
+                const priceEl = document.getElementById('gz-price');
+                const volEl = document.getElementById('gz-volume');
+                const taxEl = document.getElementById('gz-tax');
+                const caEl = document.getElementById('gz-ca');
+                const testBadge = document.getElementById('gz-test-badge');
+                const bscLink = document.getElementById('gz-bscscan-link');
+                const verifyLink = document.getElementById('gz-verify-link');
+                const copyBtn = document.getElementById('gz-copy-ca');
+                const holdersEl = document.getElementById('gz-holders');
+                const shortCA = tokenCA.slice(0, 6) + '...' + tokenCA.slice(-4);
+                if (caEl) { caEl.textContent = shortCA; caEl.title = tokenCA; }
+                if (symEl) symEl.textContent = demoToken.symbol || '??';
+                if (mcapEl) mcapEl.textContent = demoToken.mcap || '--';
+                if (priceEl) priceEl.textContent = demoToken.price || '--';
+                if (volEl) volEl.textContent = demoToken.volume24h || '--';
+                if (taxEl) taxEl.textContent = demoToken.taxInfo ? demoToken.taxInfo.feeRate : '--';
+                if (holdersEl) holdersEl.textContent = demoToken.holders || '--';
+                if (testBadge) testBadge.classList.remove('hidden');
+                const fmLink = document.getElementById('gz-fourmeme-link');
+                if (fmLink) {
+                    fmLink.href = demoToken.fourmemeUrl || `https://four.meme/token/${tokenCA}`;
+                    fmLink.classList.remove('hidden');
+                }
+                if (bscLink) {
+                    bscLink.href = `https://testnet.bscscan.com/address/${tokenCA}`;
+                    bscLink.classList.remove('hidden');
+                }
+                if (verifyLink) verifyLink.href = `${window.location.origin}/verify/agent/${agentId}`;
+                if (copyBtn) copyBtn.onclick = () => { navigator.clipboard.writeText(tokenCA).catch(() => {}); };
+                // Economy section for demo
+                const econEl = document.getElementById('gz-economy');
+                if (econEl && demoToken.economy) {
+                    econEl.classList.remove('hidden');
+                    const rev = document.getElementById('gz-revenue');
+                    const svc = document.getElementById('gz-svc-calls');
+                    const div = document.getElementById('gz-dividends');
+                    const lp = document.getElementById('gz-lp');
+                    if (rev) rev.textContent = demoToken.economy.agentRevenue || '--';
+                    if (svc) svc.textContent = demoToken.economy.serviceCalls ? `${demoToken.economy.serviceCalls} / 24h` : '--';
+                    if (div) div.textContent = demoToken.economy.holderDividends || '--';
+                    if (lp) lp.textContent = demoToken.economy.lpReinvested || '--';
+                }
+                return;
+            }
+            // --- end demo mock ---
+
+            try {
+                const provider = new ethers.JsonRpcProvider(HTTP_RPC_URL);
+                const registry = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
+                const tokenCA = await registry.agentTokenCA(agentId);
+
+                if (!tokenCA || tokenCA === ZERO_ADDR) {
+                    gz.classList.add('hidden');
+                    return;
+                }
+
+                // Show the zone
+                gz.classList.remove('hidden');
+
+                // Try fetching from our Express API first
+                let data = null;
+                try {
+                    const apiBase = window.location.origin;
+                    const resp = await fetch(`${apiBase}/api/agent-token/${agentId}`);
+                    if (resp.ok) data = await resp.json();
+                } catch { /* fallback to basic display */ }
+
+                const symEl = document.getElementById('gz-symbol');
+                const mcapEl = document.getElementById('gz-mcap');
+                const priceEl = document.getElementById('gz-price');
+                const volEl = document.getElementById('gz-volume');
+                const taxEl = document.getElementById('gz-tax');
+                const caEl = document.getElementById('gz-ca');
+                const testBadge = document.getElementById('gz-test-badge');
+                const fmLink = document.getElementById('gz-fourmeme-link');
+                const bscLink = document.getElementById('gz-bscscan-link');
+
+                const shortCA = tokenCA.slice(0, 6) + '...' + tokenCA.slice(-4);
+                if (caEl) { caEl.textContent = shortCA; caEl.title = tokenCA; }
+
+                if (data) {
+                    if (symEl) symEl.textContent = data.symbol || data.name_token || '??';
+                    if (mcapEl) mcapEl.textContent = data.mcap || '--';
+                    if (priceEl) priceEl.textContent = data.price || '--';
+                    if (volEl) volEl.textContent = data.volume24h || '--';
+                    if (taxEl) taxEl.textContent = data.taxInfo ? `${data.taxInfo.feeRate}%` : '--';
+                    const holdersEl = document.getElementById('gz-holders');
+                    if (holdersEl) holdersEl.textContent = data.holders || '--';
+                    if (testBadge && data.isTestMode) testBadge.classList.remove('hidden');
+                    if (fmLink) {
+                        fmLink.href = data.fourmemeUrl || `https://four.meme/token/${tokenCA}`;
+                        fmLink.classList.remove('hidden');
+                    }
+                    // Economy data
+                    const econEl = document.getElementById('gz-economy');
+                    if (econEl && data.economy) {
+                        econEl.classList.remove('hidden');
+                        const rev = document.getElementById('gz-revenue');
+                        const svc = document.getElementById('gz-svc-calls');
+                        const div = document.getElementById('gz-dividends');
+                        const lp = document.getElementById('gz-lp');
+                        if (rev) rev.textContent = data.economy.agentRevenue || '--';
+                        if (svc) svc.textContent = data.economy.serviceCalls ? `${data.economy.serviceCalls} / 24h` : '--';
+                        if (div) div.textContent = data.economy.holderDividends || '--';
+                        if (lp) lp.textContent = data.economy.lpReinvested || '--';
+                    }
+                } else {
+                    if (symEl) symEl.textContent = 'TOKEN';
+                    if (testBadge) testBadge.classList.add('hidden');
+                }
+
+                // BSCScan link always available
+                if (bscLink) {
+                    bscLink.href = `https://testnet.bscscan.com/address/${tokenCA}`;
+                    bscLink.classList.remove('hidden');
+                }
+
+                // Verify link
+                const verifyLink = document.getElementById('gz-verify-link');
+                if (verifyLink) {
+                    verifyLink.href = `${window.location.origin}/verify/agent/${agentId}`;
+                }
+
+                // Copy CA button
+                const copyBtn = document.getElementById('gz-copy-ca');
+                if (copyBtn) {
+                    copyBtn.onclick = () => {
+                        navigator.clipboard.writeText(tokenCA).catch(() => {});
+                    };
+                }
+            } catch (err) {
+                console.warn('[GraduateZone] Error:', err.message);
+                gz.classList.add('hidden');
+            }
+        }
+
+        function refreshAgentVisual(agentId, score, status, isGraduating = false, shouldPulse = true) {
+            const hexNode = document.getElementById(`hex-node-${agentId}`);
+            if (!hexNode) return;
+
+            const style = getTierStyle(Number(score), Number(status));
+            
+            // Maintain layout classes but dynamically re-apply tier styles
+            let innerClass = "hex-inner";
+            let baseClasses = `hex-outer ${style.bg} ${style.shadow} transition-all duration-700 ease-out absolute cursor-pointer hover:scale-125`;
+
+            const isGraduated = Number(status) === 1;
+
+            if (isGraduated) {
+                baseClasses += " hex-outer-graduated";
+                innerClass = "hex-inner";
+            }
+            
+            hexNode.className = baseClasses;
+            const innerDiv = hexNode.querySelector('div');
+            if(innerDiv) {
+                innerDiv.className = innerClass;
+            }
+            const textDiv = hexNode.querySelector('.font-display');
+            if(textDiv) {
+                textDiv.className = `font-display text-[8px] ${style.text} drop-shadow-md`;
+            }
+
+            if (isGraduating) {
+                // Medium-intensity graduation burst, then keep stable crowned breathing state.
+                hexNode.classList.add('graduation-burst');
+                setTimeout(() => {
+                    hexNode.classList.remove('graduation-burst');
+                }, 2200);
+            } else if (shouldPulse && Number(status) !== 1) {
+                hexNode.classList.add('animate-pulse', 'border', 'border-yellow-400');
+                setTimeout(() => {
+                    hexNode.classList.remove('animate-pulse', 'border', 'border-yellow-400');
+                }, 1800);
+            }
+
+            const textNode = document.getElementById(`hex-text-${agentId}`);
+            if (textNode) {
+                textNode.className = `font-display text-[8px] ${style.text}`;
+            }
+        }
+
+        function syncAgentState(agentId, agentData) {
+            const normalizedAgent = normalizeAgentData(agentData);
+            existingAgentsMap.set(agentId, normalizedAgent);
+
+            const idx = rawAgents.findIndex((x) => x.id === agentId);
+            if (idx >= 0) {
+                rawAgents[idx] = { id: agentId, data: normalizedAgent };
+            }
+        }
+
+        function refreshSelectedHudIfNeeded(agentId, agentData) {
+            if (selectedAgentId === agentId) {
+                renderAgentHud(agentId, agentData);
+            }
+        }
+
+        function focusHudOnAgent(agentId, agentData) {
+            selectedAgentId = agentId;
+            renderAgentHud(agentId, agentData);
+        }
+        
+        function renderHexagon(agentObj, coord, mapEl) {
+            const i = agentObj.id;
+            const agent = agentObj.data;
+            const score = Number(agent.trustScore);
+            const status = Number(agent.status);
+            const style = getTierStyle(score, status);
+            
+            const hex = document.createElement('div');
+            // Store original styling classes
+            hex.id = `hex-node-${i}`;
+            let baseClasses = `hex-outer ${style.bg} ${style.shadow} opacity-0 scale-50 transition-all duration-700 ease-out absolute cursor-pointer hover:scale-125`;
+            
+            let innerClass = "hex-inner";
+            const isGraduated = status === 1;
+
+            if (isGraduated) {
+                baseClasses += " hex-outer-graduated";
+                // Let the normal hex-inner class apply
+            }
+            hex.className = baseClasses;
+            
+            // Apply specific coordinate
+            hex.style.left = `calc(50% + ${coord.x - 28}px)`; // W/2
+            hex.style.top = `calc(50% + ${coord.y - 32}px)`; // H/2
+            
+            hex.innerHTML = `
+                <div class="${innerClass}">
+                    <div class="font-display text-[8px] ${style.text} drop-shadow-md" id="hex-text-${i}">#${i}</div>
+                </div>
+            `;
+            
+            // Animate entrance: distance based delay! (slow spread)
+            setTimeout(() => {
+                hex.classList.remove('opacity-0', 'scale-50');
+                hex.classList.add('opacity-100', 'scale-100');
+            }, coord.dist * HEX_ENTRANCE_DISTANCE_FACTOR + HEX_ENTRANCE_BASE_DELAY_MS);
+
+            hex.onclick = (e) => {
+                e.stopPropagation(); // prevent drag trigger
+                sfx.clickHex();
+                selectedAgentId = i;
+                
+                // Log interaction to terminal
+                terminal.typeLog(`vt connect --node #${i}`, "text-gray-300");
+                setTimeout(() => {
+                    terminal.log(`[OK] SECURED NODE #${i}`, "text-neonpurple");
+                }, 600);
+
+                const latestAgent = existingAgentsMap.get(i) || agent;
+                renderAgentHud(i, latestAgent);
+            };
+
+            mapEl.appendChild(hex);
+        }
+
+        async function upsertAgentFromChain(agentId, sourceLabel) {
+            if (!readContract) return;
+
+            try {
+                const virtualDemoAgent = demoVirtualAgents.get(Number(agentId));
+                const chainAgent = virtualDemoAgent
+                    ? normalizeAgentData(virtualDemoAgent)
+                    : normalizeAgentData(await readContract.getAgent(agentId));
+                const existed = existingAgentsMap.has(agentId);
+
+                if (!existed) {
+                    const agentObj = { id: agentId, data: chainAgent };
+                    syncAgentState(agentId, chainAgent);
+                    rawAgents.push(agentObj);
+                    const newCoord = appendOneCoordinate();
+
+                    const mapEl = document.getElementById('hex-map');
+                    renderHexagon(agentObj, newCoord, mapEl);
+                    lastAgentId = Math.max(lastAgentId, agentId);
+                    terminal.log(`[SYS] NODE #${agentId} DEPLOYED (${sourceLabel})`, "text-neon");
+                } else {
+                    const oldAgent = existingAgentsMap.get(agentId);
+                    const oldScore = Number(oldAgent.trustScore);
+                    const newScore = Number(chainAgent.trustScore);
+                    const oldStatus = Number(oldAgent.status);
+                    const newStatus = Number(chainAgent.status);
+                    
+                    const isGraduating = oldStatus === 0 && newStatus === 1;
+
+                    syncAgentState(agentId, chainAgent);
+                    refreshAgentVisual(agentId, newScore, newStatus, isGraduating, oldScore !== newScore || oldStatus !== newStatus);
+
+                    if (isGraduating) {
+                        terminal.log(`[ALERT] NODE #${agentId} SUCCESSFULLY GRADUATED FROM SYSTEM!`, "bg-yellow-400 text-black p-1 animate-pulse font-bold");
+                    } else if (oldScore !== newScore || oldStatus !== newStatus) {
+                        terminal.log(`[SYS] NODE #${agentId} UPDATED (${sourceLabel}) ${oldScore} -> ${newScore}`, "text-yellow-400");
+                    }
+                }
+
+                refreshSelectedHudIfNeeded(agentId, chainAgent);
+            } catch (error) {
+                console.warn(`Failed to upsert agent #${agentId} from chain`, error);
+            }
+        }
+
+        function getLegacyMockTail(agentId, curveKey, fallbackValue) {
+            if (TRUST_HISTORY_MODE !== 'legacy') return fallbackValue;
+            const mock = getCurveMockForAgent(agentId);
+            if (!mock) return fallbackValue;
+            const points = curveKey === 'stake' ? mock.stake : mock.trust;
+            const last = Array.isArray(points) && points.length > 0 ? points[points.length - 1] : null;
+            return safeToNumber(last?.y, fallbackValue);
+        }
+
+        async function handleAgentRegisteredEvent(agentId, sourceLabel = 'EVENT:REGISTERED', options = {}) {
+            const id = Number(agentId);
+            const withEventLog = options.withEventLog !== false;
+            const withSound = options.withSound !== false;
+
+            lastBlockTime = Date.now();
+            if (withEventLog) {
+                terminal.log(`[EVENT] AgentRegistered #${id}`, "text-neoncyan");
+            }
+            if (withSound) {
+                playAgentLaunchSfx();
+            }
+            await upsertAgentFromChain(id, sourceLabel);
+        }
+
+        async function handleTrustUpdatedEvent(agentId, newScore, blockNo, options = {}) {
+            const id = Number(agentId);
+            const scoreNow = Number(newScore);
+            const withEventLog = options.withEventLog !== false;
+            const withSound = options.withSound !== false;
+            const withReconcile = options.withReconcile !== false;
+
+            lastBlockTime = Date.now();
+            if (withEventLog) {
+                terminal.log(`[EVENT] TrustUpdated #${id} -> ${scoreNow}`, "text-neoncyan");
+            }
+            if (withSound) {
+                playSyncSfx();
+            }
+
+            const current = existingAgentsMap.get(id);
+            if (current) {
+                const oldScore = Number(current.trustScore);
+                const patched = normalizeAgentData(current, { trustScore: scoreNow });
+
+                syncAgentState(id, patched);
+                refreshAgentVisual(id, scoreNow, Number(patched.status), false, true);
+                focusHudOnAgent(id, patched);
+                terminal.log(`[SYS] NODE #${id} SCORE UPDATED: ${oldScore} -> ${scoreNow}`, "text-yellow-400");
+            } else {
+                await upsertAgentFromChain(id, 'EVENT:TRUST');
+            }
+
+            if (withReconcile) {
+                setTimeout(() => {
+                    upsertAgentFromChain(id, 'EVENT:TRUST:RECONCILE');
+                }, 1200);
+            }
+
+            await appendTrustCurvePoint(id, scoreNow, safeToNumber(blockNo, null));
+        }
+
+        async function handleStatusChangedEvent(agentId, newStatus, options = {}) {
+            const id = Number(agentId);
+            const statusNow = Number(newStatus);
+            const withEventLog = options.withEventLog !== false;
+            const withSound = options.withSound !== false;
+            const withReconcile = options.withReconcile !== false;
+
+            lastBlockTime = Date.now();
+            if (withEventLog) {
+                terminal.log(`[EVENT] StatusChanged #${id} -> ${statusNow}`, "text-neoncyan");
+            }
+
+            const current = existingAgentsMap.get(id);
+            if (current) {
+                const patched = normalizeAgentData(current, { status: statusNow });
+                const isGrad = Number(current.status) === 0 && statusNow === 1;
+                syncAgentState(id, patched);
+                refreshAgentVisual(id, Number(patched.trustScore), statusNow, isGrad, true);
+                focusHudOnAgent(id, patched);
+                if (isGrad) {
+                    if (withSound) playGraduationSfx();
+                    terminal.log(`[ALERT] NODE #${id} SUCCESSFULLY GRADUATED FROM SYSTEM!`, "bg-yellow-400 text-black p-1 animate-pulse font-bold");
+                } else {
+                    if (withSound) playSyncSfx();
+                    terminal.log(`[SYS] NODE #${id} STATUS UPDATED -> ${getStatusLabel(statusNow)}`, "text-yellow-400");
+                }
+            } else {
+                if (withSound) playSyncSfx();
+                await upsertAgentFromChain(id, 'EVENT:STATUS');
+            }
+
+            if (withReconcile) {
+                setTimeout(() => {
+                    upsertAgentFromChain(id, 'EVENT:STATUS:RECONCILE');
+                }, 1200);
+            }
+        }
+
+        async function handleInvestedEvent(agentId, rawAmount, blockNo, options = {}) {
+            const id = Number(agentId);
+            const withEventLog = options.withEventLog !== false;
+            const withSound = options.withSound !== false;
+
+            lastBlockTime = Date.now();
+            if (withEventLog) {
+                terminal.log(`[EVENT] Invested #${id} +${formatStakeUnits(rawAmount).toFixed(2)} USDT`, "text-neonpurple");
+            }
+            if (withSound) {
+                playSyncSfx();
+            }
+
+            if (selectedAgentId === id) {
+                await loadAgentCurves(id);
+            }
+            await appendStakeCurvePoint(id, rawAmount, safeToNumber(blockNo, null));
+        }
+
+        async function handleSettledEvent(agentId, statusCode, blockNo, options = {}) {
+            const id = Number(agentId);
+            const normalizedStatus = Number(statusCode);
+            const withEventLog = options.withEventLog !== false;
+            const withSound = options.withSound !== false;
+
+            lastBlockTime = Date.now();
+            if (withEventLog) {
+                terminal.log(`[EVENT] Settled #${id} status=${normalizedStatus}`, "text-neonpurple");
+            }
+            if (withSound) {
+                playSyncSfx();
+            }
+
+            if (selectedAgentId === id) {
+                await loadAgentCurves(id);
+            }
+            await appendStakeSettlePoint(id, safeToNumber(blockNo, null));
+        }
+
+        function bindRealtimeEventHandlers() {
+            if (!liveContract) return;
+
+            liveContract.removeAllListeners("AgentRegistered");
+            liveContract.removeAllListeners("TrustUpdated");
+            liveContract.removeAllListeners("StatusChanged");
+            if (liveEscrowContract) {
+                liveEscrowContract.removeAllListeners("Invested");
+                liveEscrowContract.removeAllListeners("Settled");
+            }
+
+            liveContract.on("AgentRegistered", async (agentId) => {
+                await handleAgentRegisteredEvent(agentId, "EVENT:REGISTERED");
+            });
+
+            liveContract.on("TrustUpdated", async (agentId, newScore, eventPayload) => {
+                const blockNo = safeToNumber(
+                    eventPayload?.log?.blockNumber ?? eventPayload?.blockNumber ?? latestBlockNumber,
+                    null
+                );
+                await handleTrustUpdatedEvent(agentId, newScore, blockNo);
+            });
+
+            liveContract.on("StatusChanged", async (agentId, newStatus) => {
+                await handleStatusChangedEvent(agentId, newStatus);
+            });
+
+            if (liveEscrowContract) {
+                liveEscrowContract.on("Invested", async (agentId, _backer, amount, eventPayload) => {
+                    const blockNo = safeToNumber(
+                        eventPayload?.log?.blockNumber ?? eventPayload?.blockNumber ?? latestBlockNumber,
+                        null
+                    );
+                    await handleInvestedEvent(agentId, amount, blockNo);
+                });
+
+                liveEscrowContract.on("Settled", async (agentId, status, eventPayload) => {
+                    const blockNo = safeToNumber(
+                        eventPayload?.log?.blockNumber ?? eventPayload?.blockNumber ?? latestBlockNumber,
+                        null
+                    );
+                    await handleSettledEvent(agentId, status, blockNo);
+                });
+            }
+        }
+
+        function hasEnabledDemoStep(state) {
+            if (!state || !state.steps) return false;
+            return Object.values(state.steps).some((flag) => Boolean(flag));
+        }
+
+        function createDemoAgent18Snapshot() {
+            return normalizeAgentData({
+                name: 'Veri #2',
+                wallet: DEMO_AGENT_18_WALLET,
+                trustScore: 0,
+                status: 0
+            });
+        }
+
+        async function applyDemoLaunchStep() {
+            const agentId = 18;
+            if (!demoVirtualAgents.has(agentId)) {
+                demoVirtualAgents.set(agentId, createDemoAgent18Snapshot());
+            }
+            await handleAgentRegisteredEvent(agentId, 'Veri #2', {
+                withEventLog: true,
+                withSound: true
+            });
+        }
+
+        async function applyDemoInvestStep() {
+            const amount = ethers.parseUnits('0.05', 6);
+            await handleInvestedEvent(17, amount, null, {
+                withEventLog: true,
+                withSound: true
+            });
+        }
+
+        async function applyDemoChallengeStep() {
+            const current = existingAgentsMap.get(17);
+            const baselineTrust = getLegacyMockTail(17, 'trust', safeToNumber(current?.trustScore, 0));
+            const nextTrust = baselineTrust + 25;
+            await handleTrustUpdatedEvent(17, nextTrust, null, {
+                withEventLog: true,
+                withSound: true,
+                withReconcile: false
+            });
+        }
+
+        async function applyDemoGraduateStep() {
+            await handleStatusChangedEvent(17, 1, {
+                withEventLog: true,
+                withSound: true,
+                withReconcile: false
+            });
+            await handleSettledEvent(17, 1, null, {
+                withEventLog: true,
+                withSound: true
+            });
+        }
+
+        async function resetDemoRuntimeOverlay() {
+            demoVirtualAgents.delete(18);
+            // Reset demo graduate zone for agent #17
+            const gz = document.getElementById('graduate-zone');
+            if (gz) gz.classList.add('hidden');
+
+            if (existingAgentsMap.has(18)) {
+                existingAgentsMap.delete(18);
+            }
+            if (Array.isArray(rawAgents) && rawAgents.length > 0) {
+                rawAgents = rawAgents.filter((entry) => Number(entry?.id) !== 18);
+            }
+
+            const node18 = document.getElementById('hex-node-18');
+            if (node18) {
+                node18.remove();
+            }
+
+            if (selectedAgentId === 18) {
+                closeAgentCardPanel();
+            }
+
+            const existing17 = existingAgentsMap.get(17);
+            if (existing17) {
+                const baselineTrust = getLegacyMockTail(17, 'trust', safeToNumber(existing17?.trustScore, 0));
+                const patched = normalizeAgentData(existing17, {
+                    trustScore: baselineTrust,
+                    status: 0
+                });
+                syncAgentState(17, patched);
+                refreshAgentVisual(17, Number(patched.trustScore), 0, false, true);
+                if (selectedAgentId === 17) {
+                    focusHudOnAgent(17, patched);
+                }
+            }
+
+            curveStateMap.delete(17);
+            curveStateMap.delete(18);
+            if (selectedAgentId === 17) {
+                await loadAgentCurves(17);
+                renderAgentCurves(17);
+            }
+        }
+
+        async function applyDemoStateTransition(prevState, nextState) {
+            const orderedSteps = [
+                'launch_veri2_agent18',
+                'invest_agent17_usdt_0_05',
+                'challenge_agent17_trust_plus25',
+                'graduate_agent17'
+            ];
+
+            const prev = normalizeDemoState(prevState);
+            const next = normalizeDemoState(nextState);
+            const nextEnabled = next.enabled && hasEnabledDemoStep(next);
+
+            let effectivePrev = { ...prev.steps };
+            const stepTurnedOff = orderedSteps.some((step) => prev.steps[step] && !next.steps[step]);
+            const hadRuntimeOverlay =
+                demoVirtualAgents.size > 0 ||
+                existingAgentsMap.has(18) ||
+                (prev.enabled && hasEnabledDemoStep(prev));
+
+            if ((!nextEnabled && hadRuntimeOverlay) || stepTurnedOff) {
+                await resetDemoRuntimeOverlay();
+                effectivePrev = buildDefaultDemoState().steps;
+            }
+
+            if (!nextEnabled) {
+                return;
+            }
+
+            const launchNodeMissing =
+                next.steps.launch_veri2_agent18 &&
+                (!existingAgentsMap.has(18) || !document.getElementById('hex-node-18'));
+
+            if (launchNodeMissing) {
+                demoVirtualAgents.delete(18);
+                existingAgentsMap.delete(18);
+                if (Array.isArray(rawAgents)) {
+                    rawAgents = rawAgents.filter((entry) => Number(entry?.id) !== 18);
+                }
+                curveStateMap.delete(18);
+                effectivePrev.launch_veri2_agent18 = false;
+            }
+
+            for (const step of orderedSteps) {
+                if (!next.steps[step] || effectivePrev[step]) continue;
+
+                if (step === 'launch_veri2_agent18') {
+                    await applyDemoLaunchStep();
+                } else if (step === 'invest_agent17_usdt_0_05') {
+                    await applyDemoInvestStep();
+                } else if (step === 'challenge_agent17_trust_plus25') {
+                    await applyDemoChallengeStep();
+                } else if (step === 'graduate_agent17') {
+                    await applyDemoGraduateStep();
+                }
+            }
+        }
+
+        async function fetchDemoStateFromJson() {
+            const url = `${DEMO_STATE_JSON_URL}?v=${Date.now()}`;
+            const response = await fetch(url, { cache: 'no-store' });
+            if (!response.ok) {
+                throw new Error(`demo_state.json load failed: ${response.status}`);
+            }
+            const payload = await response.json();
+            return normalizeDemoState(payload);
+        }
+
+        async function pollDemoStateChanges() {
+            try {
+                const incoming = await fetchDemoStateFromJson();
+                const revisionChanged = incoming.revision !== lastDemoRevision || incoming.updatedAt !== DEMO_STATE.updatedAt;
+                if (!revisionChanged) return;
+
+                const previous = DEMO_STATE;
+                DEMO_STATE = incoming;
+                lastDemoRevision = incoming.revision;
+                await applyDemoStateTransition(previous, incoming);
+            } catch (error) {
+                // Keep silent to avoid terminal spam when local static server has stale cache gaps.
+            }
+        }
+
+        async function bootstrapDemoStateRuntime() {
+            if (demoRuntimeBootstrapped) return;
+            demoRuntimeBootstrapped = true;
+
+            try {
+                const loaded = await fetchDemoStateFromJson();
+                const baseline = buildDefaultDemoState();
+                DEMO_STATE = loaded;
+                lastDemoRevision = loaded.revision;
+                await applyDemoStateTransition(baseline, loaded);
+            } catch (_) {
+                await applyDemoStateTransition(buildDefaultDemoState(), DEMO_STATE);
+            }
+        }
+
+        function startDemoStateWatcher() {
+            if (demoStatePollTimer) {
+                clearInterval(demoStatePollTimer);
+                demoStatePollTimer = null;
+            }
+
+            demoStatePollTimer = setInterval(() => {
+                pollDemoStateChanges();
+            }, DEMO_STATE_POLL_MS);
+        }
+
+        function isTypingTarget(target) {
+            if (!target) return false;
+            if (target.isContentEditable) return true;
+            const tag = String(target.tagName || '').toLowerCase();
+            return tag === 'input' || tag === 'textarea' || tag === 'select';
+        }
+
+        function getDemoHotkeyAction(event) {
+            if (!event || !event.ctrlKey || event.altKey || event.metaKey) return null;
+            if (event.repeat) return null;
+            if (isTypingTarget(event.target)) return null;
+
+            const key = String(event.key || '').toLowerCase();
+            if (key === 'z') return 'launch_veri2_agent18';
+            if (key === 'x') return 'invest_agent17_usdt_0_05';
+            if (key === 'c') return 'challenge_agent17_trust_plus25';
+            if (key === 'v') return 'graduate_agent17';
+            if (key === 'b') return 'reset';
+            return null;
+        }
+
+        async function applyDemoHotkeyAction(action) {
+            if (demoHotkeyBusy) return;
+
+            demoHotkeyBusy = true;
+            try {
+                const previous = normalizeDemoState(DEMO_STATE);
+                let next;
+
+                if (action === 'reset') {
+                    next = buildDefaultDemoState();
+                } else {
+                    next = normalizeDemoState(DEMO_STATE);
+                    next.enabled = true;
+                    next.steps[action] = true;
+                }
+
+                DEMO_STATE = normalizeDemoState(next);
+                window.__VERIVERSE_DEMO_STATE__ = DEMO_STATE;
+                await applyDemoStateTransition(previous, DEMO_STATE);
+            } catch (_) {
+            } finally {
+                demoHotkeyBusy = false;
+            }
+        }
+
+        function bindDemoPageHotkeys() {
+            if (demoHotkeysBound) return;
+            demoHotkeysBound = true;
+
+            document.addEventListener('keydown', (event) => {
+                const action = getDemoHotkeyAction(event);
+                if (!action) return;
+                event.preventDefault();
+                event.stopPropagation();
+                applyDemoHotkeyAction(action);
+            });
+
+        }
+
+        async function runReconnectBackfill() {
+            if (!readContract) return;
+
+            try {
+                const nextIdBN = await readContract.nextAgentId();
+                const totalAgents = Math.max(0, Number(nextIdBN) - 1);
+                if (totalAgents === 0) return;
+
+                for (let i = 1; i <= totalAgents; i++) {
+                    await upsertAgentFromChain(i, "BACKFILL");
+                }
+
+                lastAgentId = Math.max(lastAgentId, totalAgents);
+            } catch (error) {
+                console.warn("Backfill sync failed", error);
+            }
+        }
+
+        function attachWsLifecycleHooks() {
+            if (!usingWsRealtime || !liveProvider || !liveProvider.websocket) return;
+
+            const ws = liveProvider.websocket;
+            ws.onclose = () => {
+                terminal.log("[WARN] WS CHANNEL CLOSED, RECONNECTING...", "text-red-400");
+                restoreConnection();
+            };
+            ws.onerror = () => {
+                terminal.log("[WARN] WS CHANNEL ERROR DETECTED", "text-red-400");
+            };
+        }
+
+        async function doRadarSweep(checkOldIdx) {
+            if(!readContract) return checkOldIdx;
+            
+            try {
+                // 1. Radar Ping for new agents
+                const nextIdBN = await readContract.nextAgentId();
+                const newTotal = Math.max(0, Number(nextIdBN) - 1);
+                
+                if (newTotal > lastAgentId) {
+                    // NEW AGENTS FOUND
+                    terminal.log(`[ALERT] NEW SIGNALS DETECTED`, "text-red-500 animate-pulse");
+                    playAgentLaunchSfx();
+                    for (let n = lastAgentId + 1; n <= newTotal; n++) {
+                        try {
+                            await upsertAgentFromChain(n, "BLOCK:REGISTERED");
+                        } catch (err) {
+                            console.error('Failed to parse new agent', n);
+                        }
+                    }
+                    lastAgentId = newTotal;
+                } else if (lastAgentId > 0) {
+                    // 2. Light verify existing agent points
+                    const checkId = checkOldIdx;
+                    checkOldIdx++;
+                    if (checkOldIdx > lastAgentId) checkOldIdx = 1;
+                    
+                    const oldA = existingAgentsMap.get(checkId);
+                    if (oldA) {
+                        const currentA = await readContract.getAgent(checkId);
+                        const oldScore = Number(oldA.trustScore);
+                        const newScore = Number(currentA.trustScore);
+                        const oldStatus = Number(oldA.status);
+                        const newStatus = Number(currentA.status);
+                        
+                        const isGraduating = oldStatus === 0 && newStatus === 1;
+
+                        // If score changed
+                        if (oldScore !== newScore || oldStatus !== newStatus) {
+                            playSyncSfx();
+                            if (isGraduating) {
+                                 playGraduationSfx();
+                                 terminal.log(`[ALERT] NODE #${checkId} SUCCESSFULLY GRADUATED FROM SYSTEM!`, "bg-yellow-400 text-black p-1 animate-pulse font-bold");
+                            } else {
+                                terminal.log(`[SYS] NODE #${checkId} SCORE UPDATED: ${oldScore} -> ${newScore}`, "text-yellow-400");
+                            }
+                            syncAgentState(checkId, currentA);
+                            refreshAgentVisual(checkId, newScore, newStatus, isGraduating, true);
+
+                            refreshSelectedHudIfNeeded(checkId, currentA);
+                        }
+                    }
+                }
+            } catch(e) {
+                console.warn("Radar sweep failed", e);
+            }
+            return checkOldIdx;
+        }
+
+        async function initLiveConnection() {
+            if (liveProvider) {
+                try {
+                    liveProvider.removeAllListeners();
+                } catch (_) {}
+                try {
+                    if (typeof liveProvider.destroy === "function") {
+                        liveProvider.destroy();
+                    }
+                } catch (_) {}
+            }
+
+            try {
+                const wsProvider = new ethers.WebSocketProvider(WS_RPC_URL);
+                latestBlockNumber = await wsProvider.getBlockNumber();
+                liveProvider = wsProvider;
+                liveContract = new ethers.Contract(CONTRACT_ADDRESS, ABI, liveProvider);
+                liveEscrowContract = new ethers.Contract(ESCROW_CONTRACT_ADDRESS, ESCROW_ABI, liveProvider);
+                usingWsRealtime = true;
+                terminal.log("[SYS] RADAR CHANNEL: WEBSOCKET", "text-neonpurple");
+            } catch (wsError) {
+                console.warn("WS live channel unavailable, fallback to HTTP", wsError);
+                liveProvider = new ethers.JsonRpcProvider(HTTP_RPC_URL);
+                try {
+                    latestBlockNumber = await liveProvider.getBlockNumber();
+                } catch (_) {
+                    latestBlockNumber = '--';
+                }
+                liveContract = new ethers.Contract(CONTRACT_ADDRESS, ABI, liveProvider);
+                liveEscrowContract = new ethers.Contract(ESCROW_CONTRACT_ADDRESS, ESCROW_ABI, liveProvider);
+                usingWsRealtime = false;
+                terminal.log("[SYS] RADAR CHANNEL: HTTP FALLBACK", "text-yellow-400");
+            }
+        }
+
+        async function restoreConnection() {
+            if (radarStartInProgress) return;
+            try {
+                if(liveProvider) liveProvider.removeAllListeners("block");
+                await startRadar();
+                terminal.log("[SYS] RADAR RE-ALIGNED", "text-neonpurple");
+            } catch(e) {
+                console.warn("Watchdog reconnection failed", e);
+            }
+        }
+
+        async function startRadar() {
+            if (radarStartInProgress) return;
+            radarStartInProgress = true;
+
+            try {
+            if(pollingInterval) clearInterval(pollingInterval);
+            if(watchdogTimer) clearInterval(watchdogTimer);
+            if(liveProvider) liveProvider.removeAllListeners("block");
+            if(liveContract) {
+                liveContract.removeAllListeners("AgentRegistered");
+                liveContract.removeAllListeners("TrustUpdated");
+                liveContract.removeAllListeners("StatusChanged");
+            }
+            if(liveEscrowContract) {
+                liveEscrowContract.removeAllListeners("Invested");
+                liveEscrowContract.removeAllListeners("Settled");
+            }
+
+            await initLiveConnection();
+            if(!liveProvider || !liveContract) {
+                console.warn("No live provider available for radar");
+                return;
+            }
+
+            lastBlockTime = Date.now();
+
+            // Reconcile chain state before entering realtime loop
+            let checkOldIdx = 1;
+            if (radarBootstrapped) {
+                await runReconnectBackfill();
+            } else {
+                checkOldIdx = await doRadarSweep(checkOldIdx);
+                radarBootstrapped = true;
+            }
+
+            if (usingWsRealtime) {
+                bindRealtimeEventHandlers();
+                attachWsLifecycleHooks();
+
+                // Keep block heartbeat for watchdog health checks while updates come from events
+                liveProvider.on("block", (blockNumber) => {
+                    lastBlockTime = Date.now();
+                    latestBlockNumber = blockNumber;
+                    updateCardSyncLabel();
+                });
+
+                terminal.log("[SYS] REALTIME MODE: WS EVENTS", "text-neoncyan");
+            } else {
+                // Fallback path: block-driven sweep on HTTP provider
+                liveProvider.on("block", async (blockNumber) => {
+                    lastBlockTime = Date.now();
+                    latestBlockNumber = blockNumber;
+                    updateCardSyncLabel();
+                    checkOldIdx = await doRadarSweep(checkOldIdx);
+                });
+
+                terminal.log("[SYS] REALTIME MODE: HTTP BLOCK SWEEP", "text-yellow-400");
+            }
+
+            // Watchdog: if no block heartbeat, reconnect radar channel
+            watchdogTimer = setInterval(() => {
+                if(Date.now() - lastBlockTime > 30000) {
+                    terminal.log("[WARN] RADAR LOST SIGNAL, RETRYING...", "text-red-400");
+                    restoreConnection();
+                }
+            }, 10000);
+            } finally {
+                radarStartInProgress = false;
+            }
+        }
+    </script>
+</body>
+</html>
+
